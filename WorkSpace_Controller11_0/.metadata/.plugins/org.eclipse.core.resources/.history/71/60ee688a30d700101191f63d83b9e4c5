@@ -1,0 +1,33 @@
+
+
+//======================================================
+// OpenInput.c (Fixed & Clean Version)
+//======================================================
+
+
+
+
+
+//======================================================
+//                    LEGACY CODE
+//======================================================
+/*Control motor*/
+//HAL_GPIO_WritePin(Door_IN1_GPIO_Port, Door_IN1_Pin,
+//		GPIO_PIN_SET);
+//HAL_GPIO_WritePin(Door_IN2_GPIO_Port, Door_IN2_Pin,
+//		GPIO_PIN_RESET);
+///*Close valve*/
+//HAL_GPIO_WritePin(VALVE_GPIO_Port, VALVE_Pin, GPIO_PIN_SET);
+///*Transmit to header*/
+//
+//HAL_GPIO_WritePin(DEVICE_GPIO_Port, DEVICE_Pin, GPIO_PIN_RESET); // sensor ON
+//HAL_Delay(1500); // HX711 Stabilization (recommending 200~500ms)
+//
+//loadcell_1_open = HX711_Get_Value(&scale1, 30, 2000);
+//loadcell_2_open = HX711_Get_Value(&scale2, 30, 2000);
+//
+//LOG("[ANS]", "OK");
+//snprintf(data_TransmitHeader, sizeof(data_TransmitHeader),
+//		"loadcell_1_open = %f, loadcell_2_open = %f",
+//		loadcell_1_open, loadcell_2_open);
+//FUNCTION = SPACE;

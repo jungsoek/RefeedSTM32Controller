@@ -1,0 +1,21 @@
+//======================================================
+// TestPercent.c
+//======================================================
+void TestPercent(void) {
+
+}
+
+
+//======================================================
+//                    LEGACY CODE
+//======================================================
+//value_VolContainer = Ultra_ReadDistance();
+//value_Voltage = Read_Voltage();
+////Prepare data
+//snprintf(data_PostSimCom, sizeof(data_PostSimCom),
+//		"{\"volume\": %.2f,\"battery\": %.2f}",
+//		value_VolContainer, value_Voltage);
+////SIM_post
+//LOG("TEST", data_PostSimCom);
+//
+//FUNCTION = SPACE;

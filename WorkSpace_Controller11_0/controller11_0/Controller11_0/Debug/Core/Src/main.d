@@ -31,7 +31,8 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
  ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_uart.h \
  ../Core/Inc/SIMCOM.h ../Core/Inc/main.h ../Core/Inc/VL53L0X.h \
  ../Core/Inc/Ultrasonic.h ../Core/Inc/HX711.h ../Core/Inc/Voltage.h \
- ../Core/Inc/RTC.h ../Core/Inc/WATERSENSOR.h
+ ../Core/Inc/RTC.h ../Core/Inc/WATERSENSOR.h \
+ ../Core/Inc/Globals/Globals.h
 ../Core/Inc/main.h:
 ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal.h:
 ../Core/Inc/stm32f1xx_hal_conf.h:
@@ -71,3 +72,4 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
 ../Core/Inc/Voltage.h:
 ../Core/Inc/RTC.h:
 ../Core/Inc/WATERSENSOR.h:
+../Core/Inc/Globals/Globals.h:

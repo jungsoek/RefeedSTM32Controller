@@ -54,7 +54,6 @@ extern "C" {
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
-HAL_StatusTypeDef LOG(const char* header,const char *cmd);
 
 /* USER CODE END ET */
 

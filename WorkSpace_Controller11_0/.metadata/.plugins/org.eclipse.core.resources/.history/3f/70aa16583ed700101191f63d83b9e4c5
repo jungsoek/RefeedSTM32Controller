@@ -1,0 +1,33 @@
+#include "Globals/Globals.h"
+
+
+HAL_StatusTypeDef LOG(const char *header, const char *cmd, ...)
+{
+    memset(log_msg, 0, LOG_BUF_SIZE);
+
+    // 1) header + cmd 먼저 복사
+    strncpy(log_msg, header, LOG_BUF_SIZE - 1);
+    strncat(log_msg, cmd, LOG_BUF_SIZE - strlen(log_msg) - 1);
+
+    // 2) 가변 인자 처리 (뒤에 추가 문자열들)
+    va_list args;
+    va_start(args, cmd);
+
+    const char *arg;
+    while ((arg = va_arg(args, const char *)) != NULL) {
+        strncat(log_msg, arg, LOG_BUF_SIZE - strlen(log_msg) - 1);
+    }
+
+    va_end(args);
+
+    // 3) 마지막에 '#' 자동 부착
+    size_t len = strlen(log_msg);
+    if (len < LOG_BUF_SIZE - 2) {
+        log_msg[len] = '#';
+        log_msg[len + 1] = '\0';
+    }
+
+    HAL_UART_Transmit(&huart1, (uint8_t *)log_msg, strlen(log_msg), 50);
+
+    return HAL_OK;
+}

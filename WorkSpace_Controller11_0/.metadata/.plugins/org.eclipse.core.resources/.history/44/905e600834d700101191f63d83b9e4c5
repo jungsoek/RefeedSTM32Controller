@@ -1,0 +1,16 @@
+//======================================================
+// FORMAT.c
+//======================================================
+
+
+
+//======================================================
+//                    LEGACY CODE
+//======================================================
+//LOG("[ANS]", "TURN_OFF_MOTOR_DOOR");
+//HAL_GPIO_WritePin(Door_IN1_GPIO_Port, Door_IN1_Pin,
+//		GPIO_PIN_RESET);
+//HAL_GPIO_WritePin(Door_IN2_GPIO_Port, Door_IN2_Pin,
+//		GPIO_PIN_RESET);
+//HAL_GPIO_WritePin(DEVICE_GPIO_Port, DEVICE_Pin, GPIO_PIN_SET); //Turn off sensor source
+//FUNCTION = SPACE;

@@ -1,0 +1,53 @@
+
+
+
+
+
+
+
+
+void CheckHeader(void) {
+	//echo response for ack
+	LOG("[ANS]", "ACK");
+	LOG("[VER]", "\nController_v0.11\n");
+//	  LOG("[DEBUG]", (char*)LOG_buffer);
+	FUNCTION = SPACE;
+
+	if (strstr((char*) LOG_buffer, "[CMD]HANDSHAKE")) {
+		FUNCTION = HANDSHAKE;
+	} else if (strstr((char*) LOG_buffer, "[VALID]")
+			&& strstr((char*) LOG_buffer, "ENDSTR")) {
+		FUNCTION = VALIDATION;
+	} else if (strstr((char*) LOG_buffer, "[CMD]OPENS")) {
+		FUNCTION = OPEN_INPUT;
+	} else if (strstr((char*) LOG_buffer, "[CMD]CLOSES")) {
+		FUNCTION = CLOSE_INPUT;
+	} else if (strstr((char*) LOG_buffer, "[CMD]RECHECK")) {
+		FUNCTION = RECHECK;
+	} else if (strstr((char*) LOG_buffer, "[CMD]POSTPER")) {
+		FUNCTION = POST_PER;
+	} else if (strstr((char*) LOG_buffer, "[CMD]POSTDATA")) {
+		FUNCTION = POST_UCO;
+	} else if (strstr((char*) LOG_buffer, "[CMD]OPENB")) {
+		FUNCTION = UNLOCK_DOOR;
+	} else if (strstr((char*) LOG_buffer, "[CMD]SLEEP")) {
+		FUNCTION = SLEEP;
+	} else if (strstr((char*) LOG_buffer, "[CMD]CLOSEV")) {
+		FUNCTION = CLOSE_VALVE;
+	} else if (strstr((char*) LOG_buffer, "[CMD]OPENV")) {
+		FUNCTION = OPEN_VALVE;
+	} else if (strstr((char*) LOG_buffer, "[CMD]OFF")) {
+		FUNCTION = TURN_OFF;
+	}	  ////////////////////////////////////////////////////////
+	else if (strstr((char*) LOG_buffer, "[TEST]PERCENT")) {
+		FUNCTION = TEST_PERCENT;
+	} else if (strstr((char*) LOG_buffer, "[TEST]MEASURE")) {
+		FUNCTION = TEST_MEASURE;
+	} else if (strstr((char*) LOG_buffer, "[TEST]SDCLOSE")) {
+		FUNCTION = TEST_SDCLOSE;
+	} else if (strstr((char*) LOG_buffer, "[TEST]SDOPEN")) {
+		FUNCTION = TEST_SDOPEN;
+	} else if (strstr((char*) LOG_buffer, "[CMD]SETTING")) {
+		FUNCTION = SETTING;
+	}
+}

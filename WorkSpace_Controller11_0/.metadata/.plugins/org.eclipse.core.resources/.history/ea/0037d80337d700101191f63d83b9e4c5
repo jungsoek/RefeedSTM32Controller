@@ -1,0 +1,59 @@
+//======================================================
+// AlarmWakeUp.c
+//======================================================
+
+
+
+
+
+//======================================================
+//                    LEGACY CODE
+//======================================================
+//uint16_t error_code1 = 0;
+//LOG("[CMD]", "UPDATE");
+//HAL_GPIO_WritePin(DEVICE_GPIO_Port, DEVICE_Pin, GPIO_PIN_RESET); //Turn on sensor
+//
+//initVL53L0X(1, &hi2c1);
+//HX711_Init(&scale1, LC_Data1_GPIO_Port, LC_Data1_Pin,
+//LC_SCK_GPIO_Port, LC_SCK_Pin, calibration_factor);
+//HX711_Init(&scale2, LC_Data2_GPIO_Port, LC_Data2_Pin,
+//LC_SCK_GPIO_Port, LC_SCK_Pin, calibration_factor);
+//
+//if (SIM_Wakeup(3000) != 0) {
+//	error_code1 += 1;
+//}
+//if (VL53L0X_OFFSET(&distanceStr) == -1.0f) {
+//	error_code1 += 10;
+//}
+//if (Ultra_ReadDistance() == -1.0f) {
+//	error_code1 += 100;
+//}
+//if ((HX711_Tare(&scale1, 10, 2000) == -1.0f)
+//		|| (HX711_Tare(&scale2, 10, 2000) == -1.0f)) {
+//	error_code1 += 1000;
+//}
+////Prepare data
+//value_VolContainer = Ultra_ReadDistance();
+//value_Voltage = Read_Voltage();
+////Prepare data
+//snprintf(data_PostSimCom, sizeof(data_PostSimCom),
+//		"{\"machineId\": \"%s\", \"volume\": %.2f, \"battery\": %.2f}\r",
+//		ID, value_VolContainer, value_Voltage);
+////SIM_post
+//if (SIM_Wakeup(3000)) {
+//	LOG("[ANS]", "FAIL");
+//}
+//if (!SIMCom_Post(data_PostSimCom, url_postper, 5000)) {
+//	if (strstr((char*) SIM_data, "true")) {
+//		LOG("[ANS]", "OK");
+//	} else if (strstr((char*) SIM_data, "false")) {
+//		LOG("[ANS]", "REJECT");
+//	} else {
+//		LOG("[ANS]", "UNDEFINE");
+//	}
+//} else {
+//	LOG("[ANS]", "FAIL");
+//}
+//SIM_Sleep(3000);
+//LOG("[ANS]", "DONE");
+//FUNCTION = SLEEP;

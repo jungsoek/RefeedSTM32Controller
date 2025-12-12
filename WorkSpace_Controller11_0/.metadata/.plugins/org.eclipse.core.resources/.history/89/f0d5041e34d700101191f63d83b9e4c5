@@ -1,0 +1,82 @@
+
+
+//======================================================
+// Validation.c
+//======================================================
+
+
+
+//======================================================
+//                    LEGACY CODE
+//======================================================
+// 1) Initializing phone number buffer
+//memset(PhoneNum, '\0', sizeof(PhoneNum));
+//memset(data_PostSimCom, '\0', sizeof(data_PostSimCom)); // end of 1) Initializing phone number buffer
+//
+//// 2) Parsing phone number from among [VALID] to ENDSTR
+//{
+//	char *start_PhoneNum = strstr((char*) LOG_buffer,
+//			"[VALID]");
+//	char *end_PhoneNum = strstr((char*) LOG_buffer, "ENDSTR");
+//
+//	if (start_PhoneNum != NULL && end_PhoneNum != NULL
+//			&& end_PhoneNum > start_PhoneNum) {
+//		start_PhoneNum += 7; // Jumping interval as "[VALID]"'s length.
+//
+//		size_t len = end_PhoneNum - start_PhoneNum;
+//		if (len >= sizeof(PhoneNum)) {
+//			len = sizeof(PhoneNum) - 1;
+//		}
+//		memcpy(PhoneNum, start_PhoneNum, len);
+//		PhoneNum[len] = '\0';
+//
+//		// Print debug log to check the PhoneNum.
+//		LOG("[DEBUG]", PhoneNum);
+//	} else {
+//		LOG("[DEBUG]", "PhoneNum parse error");
+//	}
+//}
+//
+//// 3) Generate the JSON paload that send to server.
+//snprintf(data_PostSimCom, sizeof(data_PostSimCom),
+//		"{\"phoneNumber\":\"%s\",\"countryDialCode\":\"%s\",\"machineId\":\"%s\"}\r",
+//		PhoneNum, countryDialCode, ID);
+//
+//// 4) SIM Communication (It is FAKE SIM. So it isn't sent to server.)
+//if (SIM_Wakeup(3000)) {
+//	LOG("[ANS]", "FAIL");
+//}
+//
+//if (!SIMCom_Post(data_PostSimCom, url_identity, 5000)) {
+//	// LOG("[DEBUG]", (char*)SIM_data); // If you need check this LOG, Uncomment and check the log.
+//
+//	/* User case */
+//	// Allowing the normal users. (driver:false)
+//	if (strstr((char*) SIM_data, "\"driver\":false")) {
+//		LOG("[ANS]", "OK");
+//	}
+//	// unsign in users
+//	else if (strstr((char*) SIM_data,
+//			"\"message\":\"no user found\"")) {
+//		LOG("[ANS]", "REJECT");
+//	}
+//	/* Driver case */
+//	// Driver permission allowed.
+//	else if (strstr((char*) SIM_data, "\"driver\":true")) {
+//		LOG("[ANS]", "DRIVER:TRUE");
+//	}
+//	// Driver permission denied
+//	else if (strstr((char*) SIM_data,
+//			"\"message\":\"not permitted\"")) {
+//		LOG("[ANS]", "DRIVER:FALSE");
+//	}
+//	// etc...
+//	else {
+//		LOG("[ANS]", "FAIL");
+//	}
+//} else {
+//	LOG("[ANS]", "FAIL");
+//}
+//
+//SIM_Sleep(3000);
+//FUNCTION = SPACE;

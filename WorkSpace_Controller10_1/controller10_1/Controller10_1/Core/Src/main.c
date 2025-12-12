@@ -125,6 +125,7 @@ float ws_height = -1.0f;
 float oil_weight = -1.0f;
 float watersensor_value = -1.0f;
 float volume_total = -1.0f;
+int ws_threshold = 80;
 
 float lc_mass_zero = -1.0f;
 float lc_mass_real = -1.0f;
@@ -757,7 +758,8 @@ int main(void) {
 				HAL_GPIO_WritePin(Door_IN2_GPIO_Port, Door_IN2_Pin,
 						GPIO_PIN_SET);
 
-				HAL_Delay(30000);
+//				HAL_Delay(30000);
+				HAL_Delay(10000);
 
 				for (uint16_t addr = 1; addr < 128; addr++) {
 
@@ -836,8 +838,8 @@ int main(void) {
 				// Total mass using interpolation table HX711 (LC1 + LC2)
 				lc_mass = HX711_InterpFromTable(loadcell_sum);   // g 단위
 
-				watersensor_value = WATER_ReadHeightMM(220);   //(mm)
-				water_weight = WATER_ReadLastOn_Quick(220);     //last_on index
+				watersensor_value = WATER_ReadHeightMM(ws_threshold);   //(mm)
+				water_weight = WATER_ReadLastOn_Quick(ws_threshold);     //last_on index
 
 				/*Turn off the sensor*/
 				HAL_GPIO_WritePin(DEVICE_GPIO_Port, DEVICE_Pin, GPIO_PIN_SET);
@@ -955,8 +957,8 @@ int main(void) {
 				// Total mass using interpolation table HX711 (LC1 + LC2)
 				lc_mass = HX711_InterpFromTable(loadcell_sum);   // g 단위
 
-				watersensor_value = WATER_ReadHeightMM(220);   //(mm)
-				water_weight = WATER_ReadLastOn_Quick(220);     //last_on index
+				watersensor_value = WATER_ReadHeightMM(ws_threshold);   //(mm)
+				water_weight = WATER_ReadLastOn_Quick(ws_threshold);     //last_on index
 
 				/*Turn off the sensor*/
 				HAL_GPIO_WritePin(DEVICE_GPIO_Port, DEVICE_Pin, GPIO_PIN_SET);
@@ -1185,8 +1187,8 @@ int main(void) {
 				lc_mass = HX711_InterpFromTable(loadcell_sum);   // unit : g
 
 				// Estimation water mass by WATERSENSOR
-				ws_height = WATER_ReadHeightMM_Quick(220);    // unit : mm
-				water_weight = WATER_ReadLastOn_Quick(220);       // unit :g
+				ws_height = WATER_ReadHeightMM_Quick(ws_threshold);    // unit : mm
+				water_weight = WATER_ReadLastOn_Quick(ws_threshold);       // unit :g
 
 				// Estimated oil mass = total mass - water weight
 				oil_weight = lc_mass - water_weight;

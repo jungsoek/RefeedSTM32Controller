@@ -1,6 +1,1 @@
-../Core/Src/Handlers/closeInput.c:20:13:motor_close	8	static
-../Core/Src/Handlers/closeInput.c:30:13:wait_liquid_separation_30s	8	static
-../Core/Src/Handlers/closeInput.c:39:13:i2c_scan_and_reset	16	static
-../Core/Src/Handlers/closeInput.c:68:13:read_all_sensors	40	static
-../Core/Src/Handlers/closeInput.c:124:13:build_closeinput_payload	48	static
-../Core/Src/Handlers/closeInput.c:134:6:DoorClose_Measure	16	static
+../Core/Src/Handlers/CloseInput.c:4:6:CloseInput	4	static

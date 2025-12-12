@@ -1,0 +1,63 @@
+#include "Router/Router.h"
+
+#include "Globals/Globals.h"
+#include <string.h>
+
+/* ===== Command Routing Table ===== */
+typedef struct {
+    const char *key;
+    Msg_Header value;
+} CommandMap;
+
+static const CommandMap command_table[] = {
+    /* Normal Commands */
+    { "[CMD]HANDSHAKE",    HANDSHAKE     },
+    { "[CMD]OPENS",        OPEN_INPUT    },
+    { "[CMD]CLOSES",       CLOSE_INPUT   },
+    { "[CMD]RECHECK",      RECHECK       },
+    { "[CMD]POSTPER",      POST_PER      },
+    { "[CMD]POSTDATA",     POST_UCO      },
+    { "[CMD]OPENB",        UNLOCK_DOOR   },
+    { "[CMD]SLEEP",        SLEEP         },
+    { "[CMD]CLOSEV",       CLOSE_VALVE   },
+    { "[CMD]OPENV",        OPEN_VALVE    },
+    { "[CMD]OFF",          TURN_OFF      },
+    { "[CMD]SETTING",      SETTING       },
+
+    /* Test Commands */
+    { "[TEST]PERCENT",     TEST_PERCENT  },
+    { "[TEST]MEASURE",     TEST_MEASURE  },
+    { "[TEST]SDCLOSE",     TEST_SDCLOSE  },
+    { "[TEST]SDOPEN",      TEST_SDOPEN   },
+};
+
+/* ===== Special Case: VALIDATION ===== */
+/* VALIDATION 은 "[VALID]" 와 "ENDSTR" 둘 다 있어야 명령 인식 */
+static bool is_validation(const char *msg) {
+    return (strstr(msg, "[VALID]") && strstr(msg, "ENDSTR"));
+}
+
+/* ===== Main Router ===== */
+void CheckHeader(void) {
+
+    LOG("[ANS]", "ACK");
+    LOG("[VER]", "\nController_v0.11\n");
+
+    FUNCTION = SPACE;  // default
+
+    /* --- Validation check first (special rule) --- */
+    if (is_validation((char*)LOG_buffer)) {
+        FUNCTION = VALIDATION;
+        return;
+    }
+
+    /* --- Command table lookup --- */
+    for (size_t i = 0; i < sizeof(command_table)/sizeof(command_table[0]); i++) {
+        if (strstr((char*)LOG_buffer, command_table[i].key)) {
+            FUNCTION = command_table[i].value;
+            return;
+        }
+    }
+
+    /* --- Unknown header → stay SPACE --- */
+}

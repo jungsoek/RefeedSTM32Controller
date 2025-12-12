@@ -1,0 +1,37 @@
+
+
+//======================================================
+// PostUCO.c
+//======================================================
+
+
+
+
+
+//======================================================
+//                    LEGACY CODE
+//======================================================
+//memset(data_PostSimCom, '\0', sizeof(data_PostSimCom));
+////prepare data
+//snprintf(data_PostSimCom, sizeof(data_PostSimCom),
+//		"{\"phoneNumber\": \"%s\", \"countryDialCode\": \"%s\", \"machineId\": \"%s\", \"oil\": %.2f, \"water\": %.2f}\r",
+//		PhoneNum, countryDialCode, ID, oil_weight,
+//		water_weight);
+//// LOG("DEBUG", data_PostSimCom);
+////SIM_post
+//if (SIM_Wakeup(3000)) {
+//	LOG("[ANS]", "FAIL");
+//}
+//if (!SIMCom_Post(data_PostSimCom, url_postuco, 5000)) {
+//	if (strstr((char*) SIM_data, "true")) {
+//		LOG("[ANS]", "OK");
+//	} else if (strstr((char*) SIM_data, "false")) {
+//		LOG("[ANS]", "REJECT");
+//	} else {
+//		LOG("[ANS]", "UNDEFINE");
+//	}
+//} else {
+//	LOG("[ANS]", "FAIL");
+//}
+//SIM_Sleep(3000);
+//FUNCTION = SPACE;

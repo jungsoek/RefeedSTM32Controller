@@ -23,6 +23,8 @@
 /* USER CODE BEGIN Includes */
 #include <stdlib.h>    // atof, srand
 #include <string.h>    // memset, memcpy, strstr, ...
+
+#include "Globals/Globals.h"
 /* CDC set  up */
 //#include "usbd_cdc_if.h"
 /* USER CODE END Includes */
@@ -31,197 +33,8 @@
 /* USER CODE BEGIN PTD */
 /* USER CODE BEGIN PTD */
 
-/* ===== TEMP: SIM FAKE MODE (no real SIM card) ===== */
-#define SIM_FAKE_MODE   1
 
-#if SIM_FAKE_MODE
-
-// SIM 쪽 C 파일에 실제 정의가 있어야 함.
-extern uint8_t SIM_data[];
-
-// url / payload 보고 가짜 응답을 SIM_data 에 넣어주는 함수
-static void SIM_FakeFillResponse(const char *payload, const char *url) {
-	// 1) identity → 로그인/드라이버 체크
-	if (strstr(url, "identity")) {
-		/*
-		 * 여기서 payload 안에 phoneNumber 보고
-		 * 특정 번호는 driver:true, 나머지는 driver:false
-		 * 이렇게 나누고 싶으면 조건 더 넣으면 됨.
-		 *
-		 * 기본은 일반 유저: driver:false
-		 */
-		strcpy((char*) SIM_data, "{\"driver\":false}");
-	}
-	// 2) postcontainer / postuco 등 나머지 → true 응답
-	else {
-		strcpy((char*) SIM_data, "true");
-	}
-}
-
-// SIM_Wakeup: 항상 성공
-#define SIM_Wakeup(timeout_ms)   (0)
-
-// SIM_Sleep: 그냥 HAL_Delay
-#define SIM_Sleep(delay_ms)      HAL_Delay(delay_ms)
-
-// SIMCom_Post: 실제 통신 안 하고 가짜 응답 넣고 "성공" 리턴
-// main.c 에서는 if (!SIMCom_Post(...)) 형식이므로 0 이 성공이어야 함
-#define SIMCom_Post(payload, url, timeout_ms) \
-	( SIM_FakeFillResponse(payload, url), 0 )
-
-#endif
 /* ===== END SIM FAKE MODE ===== */
-
-// Receive buffer
-RTC_AlarmTypeDef sAlarm = { 0 };
-RTC_TimeTypeDef sTime = { 0 };
-
-uint8_t LOG_buffer[UART_RX_BUFFER_SIZE];
-uint8_t Rx_Buff[UART_RX_BUFFER_SIZE]; // 실제 수신 버퍼
-volatile uint8_t Data_Received_Flag = 0; // 플래그 정의
-
-/* USER CODE END PV */
-
-// Sending buffer
-char log_msg[UART_RX_BUFFER_SIZE];
-volatile bool LOG_DataValid = false;
-
-//Wake up
-volatile bool EXTI_Wakeup = false;
-volatile bool Alarm_Wakeup = false;
-volatile bool flag_EXTI = false;
-//POST PhoneNum
-char PhoneNum[20];
-
-//Data SIM, id
-const char ID[] = "testmachine";
-const char countryDialCode[] = "+84";
-const char url_postper[] = "https://api.admin.bi-oil.app/postcontainer";
-const char url_identity[] = "https://api.admin.bi-oil.app/identity";
-const char url_postuco[] = "https://api.admin.bi-oil.app/postuco";
-static char data_PostSimCom[150];
-
-//Data herder
-char data_TransmitHeader[100];
-
-// I2C Communication Status Buffer
-char i2c_check_buf[256];
-
-//Value water and oil
-float volume_water; //(Liter)
-float volume_oil;   //(Liter)
-
-//Volume on container and battery
-float value_VolContainer; // (%)
-float value_Voltage;	  // (V)
-
-float distance_Tof = -1.0f;
-float value_LoadCell_open = -1.0f;
-float value_LoadCell_close = -1.0f;
-float value_LoadCell_real = -1.0f;
-
-float water_weight = -1.0f;
-float ws_height = -1.0f;
-float oil_weight = -1.0f;
-float watersensor_value = -1.0f;
-float volume_total = -1.0f;
-
-float lc_mass_zero = -1.0f;
-float lc_mass_real = -1.0f;
-float lc_mass = -1.0f;
-
-float loadcell_1 = -1.0f;
-float loadcell_1_testmeasure = -1.0f;
-float loadcell_1_handshake = -1.0f;
-
-float loadcell_2 = -1.0f;
-float loadcell_2_testmeasure = -1.0f;
-float loadcell_2_handshake = -1.0f;
-
-float loadcell_sum = -0.1f;
-
-float loadcell_1_door = -1.0f;
-float loadcell_1_open = -1.0f;
-float loadcell_1_close = -1.0f;
-
-float loadcell_2_door = -1.0f;
-float loadcell_2_open = -1.0f;
-float loadcell_2_close = -1.0f;
-
-float ultra = -1.0f;
-
-//float volume_WS = -1.0f;
-/////
-char data_Ok[] = "OK";
-char data_Fail[] = "FAIL";
-char data_Oil_Water[] = "O1.23W4.56E";
-const char *data_Post = "{\"volume\": 123,\"battery\": 456}";
-
-typedef enum {
-	HANDSHAKE,
-	VALIDATION,
-	POST_UCO,
-	POST_PER,
-	OPEN_INPUT,
-	CLOSE_INPUT,
-	RECHECK,
-	UNLOCK_DOOR,
-	SLEEP,
-	ALARM_WAKEUP,
-	EXTI_WAKEUP,
-	OPEN_VALVE,
-	CLOSE_VALVE,
-	TURN_OFF,
-	TEST_PERCENT,
-	TEST_MEASURE,
-	TEST_SDCLOSE,
-	TEST_SDOPEN,
-	SPACE,
-	SETTING
-} Msg_Header;
-
-typedef enum {
-	ERR_SIMCOM, ERR_ULTRA, ERR_TOF, ERR_LOADCELL
-} Err_Device;
-
-Msg_Header FUNCTION;
-
-//typedef enum {
-//	IDLE,			// Run without doing anything and not sleep
-//	INIT,			// Initiate peripheral and handshake
-//	VALID,			// Check if user is valid or not QR and NUM input, Update number or QR, machine id to the server
-//	OPENS,			// Open small door
-//	POSTPER,		// Update the container percentage
-//	CLOSES,			// Close the door and start the measuring process
-//	POSTDATA,		// Update the user id, input amount and machine if to the server
-//	SLEEP,			// Sleep allowance and go to sleep
-//	ALARM,			// Display update and stop user from using machine
-//} command;
-
-/* USER CODE END PTD */
-
-/* Private define ------------------------------------------------------------*/
-/* USER CODE BEGIN PD */
-
-/* USER CODE END PD */
-
-/* Private macro -------------------------------------------------------------*/
-/* USER CODE BEGIN PM */
-
-/* USER CODE END PM */
-
-/* Private variables ---------------------------------------------------------*/
-ADC_HandleTypeDef hadc1;
-ADC_HandleTypeDef hadc2;
-
-I2C_HandleTypeDef hi2c1;
-
-RTC_HandleTypeDef hrtc;
-
-TIM_HandleTypeDef htim1;
-
-UART_HandleTypeDef huart1;
-UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 
@@ -243,61 +56,7 @@ static void MX_RTC_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-void CheckHeader(void) {
-	//echo response for ack
-	LOG("[ANS]", "ACK");
-	LOG("[VER]", "\nController_v0.11\n");
-//	  LOG("[DEBUG]", (char*)LOG_buffer);
-	FUNCTION = SPACE;
 
-	if (strstr((char*) LOG_buffer, "[CMD]HANDSHAKE")) {
-		FUNCTION = HANDSHAKE;
-	} else if (strstr((char*) LOG_buffer, "[VALID]")
-			&& strstr((char*) LOG_buffer, "ENDSTR")) {
-		FUNCTION = VALIDATION;
-	} else if (strstr((char*) LOG_buffer, "[CMD]OPENS")) {
-		FUNCTION = OPEN_INPUT;
-	} else if (strstr((char*) LOG_buffer, "[CMD]CLOSES")) {
-		FUNCTION = CLOSE_INPUT;
-	} else if (strstr((char*) LOG_buffer, "[CMD]RECHECK")) {
-		FUNCTION = RECHECK;
-	} else if (strstr((char*) LOG_buffer, "[CMD]POSTPER")) {
-		FUNCTION = POST_PER;
-	} else if (strstr((char*) LOG_buffer, "[CMD]POSTDATA")) {
-		FUNCTION = POST_UCO;
-	} else if (strstr((char*) LOG_buffer, "[CMD]OPENB")) {
-		FUNCTION = UNLOCK_DOOR;
-	} else if (strstr((char*) LOG_buffer, "[CMD]SLEEP")) {
-		FUNCTION = SLEEP;
-	} else if (strstr((char*) LOG_buffer, "[CMD]CLOSEV")) {
-		FUNCTION = CLOSE_VALVE;
-	} else if (strstr((char*) LOG_buffer, "[CMD]OPENV")) {
-		FUNCTION = OPEN_VALVE;
-	} else if (strstr((char*) LOG_buffer, "[CMD]OFF")) {
-		FUNCTION = TURN_OFF;
-	}	  ////////////////////////////////////////////////////////
-	else if (strstr((char*) LOG_buffer, "[TEST]PERCENT")) {
-		FUNCTION = TEST_PERCENT;
-	} else if (strstr((char*) LOG_buffer, "[TEST]MEASURE")) {
-		FUNCTION = TEST_MEASURE;
-	} else if (strstr((char*) LOG_buffer, "[TEST]SDCLOSE")) {
-		FUNCTION = TEST_SDCLOSE;
-	} else if (strstr((char*) LOG_buffer, "[TEST]SDOPEN")) {
-		FUNCTION = TEST_SDOPEN;
-	} else if (strstr((char*) LOG_buffer, "[CMD]SETTING")) {
-		FUNCTION = SETTING;
-	}
-}
-
-HAL_StatusTypeDef LOG(const char *header, const char *cmd) {
-	memset(log_msg, '\0', UART_RX_BUFFER_SIZE);
-	strcpy(log_msg, header);
-	strcat(log_msg, cmd);
-	strcat(log_msg, "#");
-	HAL_UART_Transmit(&huart1, (uint8_t*) log_msg, strlen(log_msg), 50);
-	// CDC_Transmit_FS((uint8_t *)log_msg, strlen(log_msg));
-	return HAL_OK;
-}
 
 float VolumeTotal(float h) {
 	float R = 12.5;
@@ -449,159 +208,33 @@ int main(void) {
 				break;
 
 			case EXTI_WAKEUP:
-				LOG("[ANS]", "EXTI_WAKEUP");
-				FUNCTION = SPACE;
+				EXTIWakeUp();
 				break;
+
 			case CLOSE_VALVE:
-				LOG("[ANS]", "CLOSE_VALVE");
-				HAL_GPIO_WritePin(VALVE_GPIO_Port, VALVE_Pin, GPIO_PIN_SET);
-				FUNCTION = SPACE;
+				CloseValve();
 				break;
+
 			case OPEN_VALVE:
-				LOG("[ANS]", "OPEN_VALVE");
-				HAL_GPIO_WritePin(VALVE_GPIO_Port, VALVE_Pin, GPIO_PIN_RESET);
-				FUNCTION = SPACE;
+				OpenValve();
 				break;
 			case TURN_OFF:
-				LOG("[ANS]", "TURN_OFF_MOTOR_DOOR");
-				HAL_GPIO_WritePin(Door_IN1_GPIO_Port, Door_IN1_Pin,
-						GPIO_PIN_RESET);
-				HAL_GPIO_WritePin(Door_IN2_GPIO_Port, Door_IN2_Pin,
-						GPIO_PIN_RESET);
-				HAL_GPIO_WritePin(DEVICE_GPIO_Port, DEVICE_Pin, GPIO_PIN_SET); //Turn off sensor source
-				FUNCTION = SPACE;
+				TurnOff();
 				break;
 			case TEST_PERCENT:
-				value_VolContainer = Ultra_ReadDistance();
-				value_Voltage = Read_Voltage();
-				//Prepare data
-				snprintf(data_PostSimCom, sizeof(data_PostSimCom),
-						"{\"volume\": %.2f,\"battery\": %.2f}",
-						value_VolContainer, value_Voltage);
-				//SIM_post
-				LOG("TEST", data_PostSimCom);
-
-				FUNCTION = SPACE;
+				TestPercent();
 				break;
 			case TEST_MEASURE:
-				//Turn on the sensor
-				HAL_GPIO_WritePin(DEVICE_GPIO_Port, DEVICE_Pin, GPIO_PIN_RESET);
-				HAL_Delay(1500);
-
-				/* ===========================
-				 *  I2C Bus Scan (hi2c1)
-				 * ===========================*/
-				for (uint8_t addr7 = 1; addr7 < 128; addr7++) {
-					// HAL is expecting 8-bit address(7bit << 1)
-					HAL_StatusTypeDef st = HAL_I2C_IsDeviceReady(&hi2c1,
-							(uint16_t) (addr7 << 1), 1, 5);
-					if (st == HAL_OK) {
-						snprintf(data_TransmitHeader,
-								sizeof(data_TransmitHeader),
-								"I2C FOUND: 0x%02X", addr7);
-						LOG("[DEBUG]", data_TransmitHeader);
-					}
-				}
-
-				ultra = Ultra_ReadDistance();
-
-				snprintf(data_TransmitHeader, sizeof(data_TransmitHeader),
-						"Ultra=%.2f cm", ultra); // ToDo : Set the unit correctly
-				LOG("[ANS]", data_TransmitHeader);
-
-				// 1) Read the Sensing data.
-				distance_Tof = VL53L0X_ReadDistance(&distanceStr,
-						offset_DistanceTof); //(mm)
-
-				// HX711 Original data (to debug)
-				loadcell_1_testmeasure = HX711_Get_Value(&scale1, 30, 2000);
-				loadcell_2_testmeasure = HX711_Get_Value(&scale2, 30, 2000);
-
-				loadcell_1 = loadcell_1_testmeasure - loadcell_1_open;
-				loadcell_2 = loadcell_2_testmeasure - loadcell_2_open;
-
-				// remove the noise around 0.
-				if (fabsf(loadcell_1) < 5.0f)
-					loadcell_1 = 0.0f;
-				if (fabsf(loadcell_2) < 5.0f)
-					loadcell_2 = 0.0f;
-
-				loadcell_sum = loadcell_1 + loadcell_2;
-
-				// Total mass using interpolation table HX711 (LC1 + LC2)
-				lc_mass = HX711_InterpFromTable(loadcell_sum);   // unit : g
-
-				// Estimation water mass by WATERSENSOR
-				ws_height = WATER_ReadHeightMM_Quick(220);    // unit : mm
-				water_weight = WATER_ReadLastOn_Quick(220);       // unit :g
-
-				// Estimated oil mass = total mass - water weight
-				oil_weight = lc_mass - water_weight;
-				if (oil_weight < 0.0f) {
-					oil_weight = 0.0f;   // Keep the value at 0 or above.
-				}
-
-				//Turn off the sensor
-				HAL_GPIO_WritePin(DEVICE_GPIO_Port, DEVICE_Pin, GPIO_PIN_SET);
-
-				// 2) Print the UART Log
-
-				// (1) HX711 Original value.
-				snprintf(data_TransmitHeader, sizeof(data_TransmitHeader),
-						"Distance=%.2f mm, LC1_raw=%.2f, LC2_raw=%.2f;",
-						distance_Tof, loadcell_1, loadcell_2);
-				LOG("[ANS]", data_TransmitHeader);
-				// (1) HX711 Original value.
-				snprintf(data_TransmitHeader, sizeof(data_TransmitHeader),
-						"lc1_test=%.2f g, lc2_test=%.2f g, lc1_open=%.2f g, lc2_open=%.2f g;",
-						loadcell_1_testmeasure, loadcell_2_testmeasure,
-						loadcell_1_open, loadcell_2_open);
-				LOG("[ANS]", data_TransmitHeader);
-				// (2) (2) Total mass that brought by interpolation table vs Water weight that sensed by water sensor.
-				snprintf(data_TransmitHeader, sizeof(data_TransmitHeader),
-						"LC_mass=%.1f g, WS_mass=%.1f g, Oil_mass=%.1f g;",
-						lc_mass, water_weight, oil_weight);
-				LOG("[ANS]", data_TransmitHeader);
-
-				// (3) WATERSENSOR height debug
-				snprintf(data_TransmitHeader, sizeof(data_TransmitHeader),
-						"WS_height=%.1f mm", ws_height);
-				LOG("[DEBUG]", data_TransmitHeader);
-
-				FUNCTION = SPACE;
+				TestMeasure();
 				break;
 			case TEST_SDCLOSE:
-				//Control motor
-				HAL_GPIO_WritePin(Door_IN1_GPIO_Port, Door_IN1_Pin,
-						GPIO_PIN_RESET);
-				HAL_GPIO_WritePin(Door_IN2_GPIO_Port, Door_IN2_Pin,
-						GPIO_PIN_SET);
-				//Transmit to header
-				LOG("[ANS]", "OK");
-				FUNCTION = SPACE;
+				TestSDClose();
 				break;
 			case TEST_SDOPEN:
-				//Control motor
-				HAL_GPIO_WritePin(Door_IN1_GPIO_Port, Door_IN1_Pin,
-						GPIO_PIN_SET);
-				HAL_GPIO_WritePin(Door_IN2_GPIO_Port, Door_IN2_Pin,
-						GPIO_PIN_RESET);
-				//Transmit to header
-				LOG("[ANS]", "OK");
-				FUNCTION = SPACE;
+				TestSDOpen();
 				break;
 			case SETTING:
-				ultra = Ultra_ReadDistance();
-				value_VolContainer = (525 - ultra) / 525 * 80;
-
-				if (value_VolContainer < 0.0f) {
-					value_VolContainer = 0.0f;
-				}
-
-				snprintf(data_TransmitHeader, sizeof(data_TransmitHeader),
-						"Container=%.2f L", value_VolContainer); // ToDo : Set the unit correctly
-				LOG("[ANS]", data_TransmitHeader);
-				FUNCTION = SPACE;
+				Setting();
 				break;
 			case SPACE:
 				break;

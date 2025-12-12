@@ -1,192 +1,99 @@
-12:23:23 **** Incremental Build of configuration Debug for project Controller ****
+19:42:57 **** Incremental Build of configuration Debug for project Controller ****
 make -j8 all 
-arm-none-eabi-gcc "../Core/Src/HX711.c" -mcpu=cortex-m3 -std=gnu11 -g3 -DDEBUG -DUSE_HAL_DRIVER -DSTM32F103xB -c -I../Core/Inc -I../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I../Drivers/STM32F1xx_HAL_Driver/Inc -I../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I../Drivers/CMSIS/Include -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Core/Src/HX711.d" -MT"Core/Src/HX711.o" --specs=nano.specs -mfloat-abi=soft -mthumb -o "Core/Src/HX711.o"
-arm-none-eabi-gcc "../Core/Src/RTC.c" -mcpu=cortex-m3 -std=gnu11 -g3 -DDEBUG -DUSE_HAL_DRIVER -DSTM32F103xB -c -I../Core/Inc -I../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I../Drivers/STM32F1xx_HAL_Driver/Inc -I../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I../Drivers/CMSIS/Include -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Core/Src/RTC.d" -MT"Core/Src/RTC.o" --specs=nano.specs -mfloat-abi=soft -mthumb -o "Core/Src/RTC.o"
-arm-none-eabi-gcc "../Core/Src/SIMCOM.c" -mcpu=cortex-m3 -std=gnu11 -g3 -DDEBUG -DUSE_HAL_DRIVER -DSTM32F103xB -c -I../Core/Inc -I../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I../Drivers/STM32F1xx_HAL_Driver/Inc -I../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I../Drivers/CMSIS/Include -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Core/Src/SIMCOM.d" -MT"Core/Src/SIMCOM.o" --specs=nano.specs -mfloat-abi=soft -mthumb -o "Core/Src/SIMCOM.o"
-arm-none-eabi-gcc "../Core/Src/Ultrasonic.c" -mcpu=cortex-m3 -std=gnu11 -g3 -DDEBUG -DUSE_HAL_DRIVER -DSTM32F103xB -c -I../Core/Inc -I../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I../Drivers/STM32F1xx_HAL_Driver/Inc -I../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I../Drivers/CMSIS/Include -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Core/Src/Ultrasonic.d" -MT"Core/Src/Ultrasonic.o" --specs=nano.specs -mfloat-abi=soft -mthumb -o "Core/Src/Ultrasonic.o"
-arm-none-eabi-gcc "../Core/Src/VL53L0X.c" -mcpu=cortex-m3 -std=gnu11 -g3 -DDEBUG -DUSE_HAL_DRIVER -DSTM32F103xB -c -I../Core/Inc -I../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I../Drivers/STM32F1xx_HAL_Driver/Inc -I../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I../Drivers/CMSIS/Include -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Core/Src/VL53L0X.d" -MT"Core/Src/VL53L0X.o" --specs=nano.specs -mfloat-abi=soft -mthumb -o "Core/Src/VL53L0X.o"
-arm-none-eabi-gcc "../Core/Src/Voltage.c" -mcpu=cortex-m3 -std=gnu11 -g3 -DDEBUG -DUSE_HAL_DRIVER -DSTM32F103xB -c -I../Core/Inc -I../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I../Drivers/STM32F1xx_HAL_Driver/Inc -I../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I../Drivers/CMSIS/Include -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Core/Src/Voltage.d" -MT"Core/Src/Voltage.o" --specs=nano.specs -mfloat-abi=soft -mthumb -o "Core/Src/Voltage.o"
 arm-none-eabi-gcc "../Core/Src/main.c" -mcpu=cortex-m3 -std=gnu11 -g3 -DDEBUG -DUSE_HAL_DRIVER -DSTM32F103xB -c -I../Core/Inc -I../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I../Drivers/STM32F1xx_HAL_Driver/Inc -I../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I../Drivers/CMSIS/Include -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Core/Src/main.d" -MT"Core/Src/main.o" --specs=nano.specs -mfloat-abi=soft -mthumb -o "Core/Src/main.o"
-arm-none-eabi-gcc "../Core/Src/stm32f1xx_hal_msp.c" -mcpu=cortex-m3 -std=gnu11 -g3 -DDEBUG -DUSE_HAL_DRIVER -DSTM32F103xB -c -I../Core/Inc -I../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I../Drivers/STM32F1xx_HAL_Driver/Inc -I../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I../Drivers/CMSIS/Include -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Core/Src/stm32f1xx_hal_msp.d" -MT"Core/Src/stm32f1xx_hal_msp.o" --specs=nano.specs -mfloat-abi=soft -mthumb -o "Core/Src/stm32f1xx_hal_msp.o"
 ../Core/Src/main.c: In function 'main':
-../Core/Src/main.c:905:37: warning: implicit declaration of function 'fabsf' [-Wimplicit-function-declaration]
-  905 |                                 if (fabsf(loadcell_1_door) < 5.0f)
+../Core/Src/main.c:830:37: warning: implicit declaration of function 'fabsf' [-Wimplicit-function-declaration]
+  830 |                                 if (fabsf(loadcell_1_door) < 5.0f)
       |                                     ^~~~~
 ../Core/Src/main.c:25:1: note: include '<math.h>' or provide a declaration of 'fabsf'
    24 | #include <stdlib.h>    // atof, srand
   +++ |+#include <math.h>
    25 | #include <string.h>    // memset, memcpy, strstr, ...
-../Core/Src/main.c:905:37: warning: incompatible implicit declaration of built-in function 'fabsf' [-Wbuiltin-declaration-mismatch]
-  905 |                                 if (fabsf(loadcell_1_door) < 5.0f)
+../Core/Src/main.c:830:37: warning: incompatible implicit declaration of built-in function 'fabsf' [-Wbuiltin-declaration-mismatch]
+  830 |                                 if (fabsf(loadcell_1_door) < 5.0f)
       |                                     ^~~~~
-../Core/Src/main.c:905:37: note: include '<math.h>' or provide a declaration of 'fabsf'
-../Core/Src/main.c:907:37: warning: incompatible implicit declaration of built-in function 'fabsf' [-Wbuiltin-declaration-mismatch]
-  907 |                                 if (fabsf(loadcell_2_door) < 5.0f)
+../Core/Src/main.c:830:37: note: include '<math.h>' or provide a declaration of 'fabsf'
+../Core/Src/main.c:832:37: warning: incompatible implicit declaration of built-in function 'fabsf' [-Wbuiltin-declaration-mismatch]
+  832 |                                 if (fabsf(loadcell_2_door) < 5.0f)
       |                                     ^~~~~
-../Core/Src/main.c:907:37: note: include '<math.h>' or provide a declaration of 'fabsf'
-../Core/Src/main.c:1022:37: warning: incompatible implicit declaration of built-in function 'fabsf' [-Wbuiltin-declaration-mismatch]
- 1022 |                                 if (fabsf(loadcell_1_door) < 5.0f)
+../Core/Src/main.c:832:37: note: include '<math.h>' or provide a declaration of 'fabsf'
+../Core/Src/main.c:949:37: warning: incompatible implicit declaration of built-in function 'fabsf' [-Wbuiltin-declaration-mismatch]
+  949 |                                 if (fabsf(loadcell_1_door) < 5.0f)
       |                                     ^~~~~
-../Core/Src/main.c:1022:37: note: include '<math.h>' or provide a declaration of 'fabsf'
-../Core/Src/main.c:1024:37: warning: incompatible implicit declaration of built-in function 'fabsf' [-Wbuiltin-declaration-mismatch]
- 1024 |                                 if (fabsf(loadcell_2_door) < 5.0f)
+../Core/Src/main.c:949:37: note: include '<math.h>' or provide a declaration of 'fabsf'
+../Core/Src/main.c:951:37: warning: incompatible implicit declaration of built-in function 'fabsf' [-Wbuiltin-declaration-mismatch]
+  951 |                                 if (fabsf(loadcell_2_door) < 5.0f)
       |                                     ^~~~~
-../Core/Src/main.c:1024:37: note: include '<math.h>' or provide a declaration of 'fabsf'
-../Core/Src/main.c:1250:37: warning: incompatible implicit declaration of built-in function 'fabsf' [-Wbuiltin-declaration-mismatch]
- 1250 |                                 if (fabsf(loadcell_1) < 5.0f)
+../Core/Src/main.c:951:37: note: include '<math.h>' or provide a declaration of 'fabsf'
+../Core/Src/main.c:1178:37: warning: incompatible implicit declaration of built-in function 'fabsf' [-Wbuiltin-declaration-mismatch]
+ 1178 |                                 if (fabsf(loadcell_1) < 5.0f)
       |                                     ^~~~~
-../Core/Src/main.c:1250:37: note: include '<math.h>' or provide a declaration of 'fabsf'
-../Core/Src/main.c:1252:37: warning: incompatible implicit declaration of built-in function 'fabsf' [-Wbuiltin-declaration-mismatch]
- 1252 |                                 if (fabsf(loadcell_2) < 5.0f)
+../Core/Src/main.c:1178:37: note: include '<math.h>' or provide a declaration of 'fabsf'
+../Core/Src/main.c:1180:37: warning: incompatible implicit declaration of built-in function 'fabsf' [-Wbuiltin-declaration-mismatch]
+ 1180 |                                 if (fabsf(loadcell_2) < 5.0f)
       |                                     ^~~~~
-../Core/Src/main.c:1252:37: note: include '<math.h>' or provide a declaration of 'fabsf'
-arm-none-eabi-gcc "../Core/Src/stm32f1xx_it.c" -mcpu=cortex-m3 -std=gnu11 -g3 -DDEBUG -DUSE_HAL_DRIVER -DSTM32F103xB -c -I../Core/Inc -I../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I../Drivers/STM32F1xx_HAL_Driver/Inc -I../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I../Drivers/CMSIS/Include -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Core/Src/stm32f1xx_it.d" -MT"Core/Src/stm32f1xx_it.o" --specs=nano.specs -mfloat-abi=soft -mthumb -o "Core/Src/stm32f1xx_it.o"
+../Core/Src/main.c:1180:37: note: include '<math.h>' or provide a declaration of 'fabsf'
 arm-none-eabi-gcc -o "Controller.elf" @"objects.list"   -mcpu=cortex-m3 -T"C:\Users\bb\Desktop\refeed\ControllerProject\WorkSpace_Controller10_1\controller10_1\Controller10_1\STM32F103C8TX_FLASH.ld" --specs=nosys.specs -Wl,-Map="Controller.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -u _printf_float -Wl,--start-group -lc -lm -Wl,--end-group
 Finished building target: Controller.elf
  
 arm-none-eabi-size  Controller.elf 
 arm-none-eabi-objdump -h -S Controller.elf  > "Controller.list"
    text	   data	    bss	    dec	    hex	filename
-  53616	    544	   4920	  59080	   e6c8	Controller.elf
+  53088	    548	   4924	  58560	   e4c0	Controller.elf
 Finished building: default.size.stdout
  
 Finished building: Controller.list
  
-12:23:27 **** Incremental Build of configuration Release for project Controller ****
+19:43:02 **** Incremental Build of configuration Release for project Controller ****
 make -j8 all 
 arm-none-eabi-gcc "../Core/Src/main.c" -mcpu=cortex-m3 -std=gnu11 -DUSE_HAL_DRIVER -DSTM32F103xB -c -I../Core/Inc -I../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I../Drivers/STM32F1xx_HAL_Driver/Inc -I../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I../Drivers/CMSIS/Include -Os -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Core/Src/main.d" -MT"Core/Src/main.o" --specs=nano.specs -mfloat-abi=soft -mthumb -o "Core/Src/main.o"
 ../Core/Src/main.c: In function 'main':
-../Core/Src/main.c:905:37: warning: implicit declaration of function 'fabsf' [-Wimplicit-function-declaration]
-  905 |                                 if (fabsf(loadcell_1_door) < 5.0f)
+../Core/Src/main.c:830:37: warning: implicit declaration of function 'fabsf' [-Wimplicit-function-declaration]
+  830 |                                 if (fabsf(loadcell_1_door) < 5.0f)
       |                                     ^~~~~
 ../Core/Src/main.c:25:1: note: include '<math.h>' or provide a declaration of 'fabsf'
    24 | #include <stdlib.h>    // atof, srand
   +++ |+#include <math.h>
    25 | #include <string.h>    // memset, memcpy, strstr, ...
-../Core/Src/main.c:905:37: warning: incompatible implicit declaration of built-in function 'fabsf' [-Wbuiltin-declaration-mismatch]
-  905 |                                 if (fabsf(loadcell_1_door) < 5.0f)
-      |                                     ^~~~~
-../Core/Src/main.c:905:37: note: include '<math.h>' or provide a declaration of 'fabsf'
-../Core/Src/main.c:907:37: warning: incompatible implicit declaration of built-in function 'fabsf' [-Wbuiltin-declaration-mismatch]
-  907 |                                 if (fabsf(loadcell_2_door) < 5.0f)
-      |                                     ^~~~~
-../Core/Src/main.c:907:37: note: include '<math.h>' or provide a declaration of 'fabsf'
-../Core/Src/main.c:1022:37: warning: incompatible implicit declaration of built-in function 'fabsf' [-Wbuiltin-declaration-mismatch]
- 1022 |                                 if (fabsf(loadcell_1_door) < 5.0f)
-      |                                     ^~~~~
-../Core/Src/main.c:1022:37: note: include '<math.h>' or provide a declaration of 'fabsf'
-../Core/Src/main.c:1024:37: warning: incompatible implicit declaration of built-in function 'fabsf' [-Wbuiltin-declaration-mismatch]
- 1024 |                                 if (fabsf(loadcell_2_door) < 5.0f)
-      |                                     ^~~~~
-../Core/Src/main.c:1024:37: note: include '<math.h>' or provide a declaration of 'fabsf'
-../Core/Src/main.c:1250:37: warning: incompatible implicit declaration of built-in function 'fabsf' [-Wbuiltin-declaration-mismatch]
- 1250 |                                 if (fabsf(loadcell_1) < 5.0f)
-      |                                     ^~~~~
-../Core/Src/main.c:1250:37: note: include '<math.h>' or provide a declaration of 'fabsf'
-../Core/Src/main.c:1252:37: warning: incompatible implicit declaration of built-in function 'fabsf' [-Wbuiltin-declaration-mismatch]
- 1252 |                                 if (fabsf(loadcell_2) < 5.0f)
-      |                                     ^~~~~
-../Core/Src/main.c:1252:37: note: include '<math.h>' or provide a declaration of 'fabsf'
-arm-none-eabi-gcc -o "Controller.elf" @"objects.list"   -mcpu=cortex-m3 -T"C:\Users\bb\Desktop\refeed\ControllerProject\WorkSpace_Controller10_1\controller10_1\Controller10_1\STM32F103C8TX_FLASH.ld" --specs=nosys.specs -Wl,-Map="Controller.map" -Wl,--gc-sections -static -u_printf_float --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
-Finished building target: Controller.elf
- 
-arm-none-eabi-size  Controller.elf 
-arm-none-eabi-objdump -h -S Controller.elf  > "Controller.list"
-   text	   data	    bss	    dec	    hex	filename
-  38560	    544	   4920	  44024	   abf8	Controller.elf
-Finished building: default.size.stdout
- 
-Finished building: Controller.list
- 
-12:24:09 **** Incremental Build of configuration Release for project Controller ****
-make -j8 all 
-arm-none-eabi-gcc "../Core/Src/main.c" -mcpu=cortex-m3 -std=gnu11 -DUSE_HAL_DRIVER -DSTM32F103xB -c -I../Core/Inc -I../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I../Drivers/STM32F1xx_HAL_Driver/Inc -I../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I../Drivers/CMSIS/Include -Os -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Core/Src/main.d" -MT"Core/Src/main.o" --specs=nano.specs -mfloat-abi=soft -mthumb -o "Core/Src/main.o"
-../Core/Src/main.c: In function 'main':
-../Core/Src/main.c:828:37: warning: implicit declaration of function 'fabsf' [-Wimplicit-function-declaration]
-  828 |                                 if (fabsf(loadcell_1_door) < 5.0f)
-      |                                     ^~~~~
-../Core/Src/main.c:25:1: note: include '<math.h>' or provide a declaration of 'fabsf'
-   24 | #include <stdlib.h>    // atof, srand
-  +++ |+#include <math.h>
-   25 | #include <string.h>    // memset, memcpy, strstr, ...
-../Core/Src/main.c:828:37: warning: incompatible implicit declaration of built-in function 'fabsf' [-Wbuiltin-declaration-mismatch]
-  828 |                                 if (fabsf(loadcell_1_door) < 5.0f)
-      |                                     ^~~~~
-../Core/Src/main.c:828:37: note: include '<math.h>' or provide a declaration of 'fabsf'
 ../Core/Src/main.c:830:37: warning: incompatible implicit declaration of built-in function 'fabsf' [-Wbuiltin-declaration-mismatch]
-  830 |                                 if (fabsf(loadcell_2_door) < 5.0f)
+  830 |                                 if (fabsf(loadcell_1_door) < 5.0f)
       |                                     ^~~~~
 ../Core/Src/main.c:830:37: note: include '<math.h>' or provide a declaration of 'fabsf'
-../Core/Src/main.c:947:37: warning: incompatible implicit declaration of built-in function 'fabsf' [-Wbuiltin-declaration-mismatch]
-  947 |                                 if (fabsf(loadcell_1_door) < 5.0f)
+../Core/Src/main.c:832:37: warning: incompatible implicit declaration of built-in function 'fabsf' [-Wbuiltin-declaration-mismatch]
+  832 |                                 if (fabsf(loadcell_2_door) < 5.0f)
       |                                     ^~~~~
-../Core/Src/main.c:947:37: note: include '<math.h>' or provide a declaration of 'fabsf'
+../Core/Src/main.c:832:37: note: include '<math.h>' or provide a declaration of 'fabsf'
 ../Core/Src/main.c:949:37: warning: incompatible implicit declaration of built-in function 'fabsf' [-Wbuiltin-declaration-mismatch]
-  949 |                                 if (fabsf(loadcell_2_door) < 5.0f)
+  949 |                                 if (fabsf(loadcell_1_door) < 5.0f)
       |                                     ^~~~~
 ../Core/Src/main.c:949:37: note: include '<math.h>' or provide a declaration of 'fabsf'
-../Core/Src/main.c:1176:37: warning: incompatible implicit declaration of built-in function 'fabsf' [-Wbuiltin-declaration-mismatch]
- 1176 |                                 if (fabsf(loadcell_1) < 5.0f)
+../Core/Src/main.c:951:37: warning: incompatible implicit declaration of built-in function 'fabsf' [-Wbuiltin-declaration-mismatch]
+  951 |                                 if (fabsf(loadcell_2_door) < 5.0f)
       |                                     ^~~~~
-../Core/Src/main.c:1176:37: note: include '<math.h>' or provide a declaration of 'fabsf'
+../Core/Src/main.c:951:37: note: include '<math.h>' or provide a declaration of 'fabsf'
 ../Core/Src/main.c:1178:37: warning: incompatible implicit declaration of built-in function 'fabsf' [-Wbuiltin-declaration-mismatch]
- 1178 |                                 if (fabsf(loadcell_2) < 5.0f)
+ 1178 |                                 if (fabsf(loadcell_1) < 5.0f)
       |                                     ^~~~~
 ../Core/Src/main.c:1178:37: note: include '<math.h>' or provide a declaration of 'fabsf'
+../Core/Src/main.c:1180:37: warning: incompatible implicit declaration of built-in function 'fabsf' [-Wbuiltin-declaration-mismatch]
+ 1180 |                                 if (fabsf(loadcell_2) < 5.0f)
+      |                                     ^~~~~
+../Core/Src/main.c:1180:37: note: include '<math.h>' or provide a declaration of 'fabsf'
 arm-none-eabi-gcc -o "Controller.elf" @"objects.list"   -mcpu=cortex-m3 -T"C:\Users\bb\Desktop\refeed\ControllerProject\WorkSpace_Controller10_1\controller10_1\Controller10_1\STM32F103C8TX_FLASH.ld" --specs=nosys.specs -Wl,-Map="Controller.map" -Wl,--gc-sections -static -u_printf_float --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 Finished building target: Controller.elf
  
 arm-none-eabi-size  Controller.elf 
 arm-none-eabi-objdump -h -S Controller.elf  > "Controller.list"
    text	   data	    bss	    dec	    hex	filename
-  38104	    544	   4920	  43568	   aa30	Controller.elf
+  38120	    548	   4924	  43592	   aa48	Controller.elf
 Finished building: default.size.stdout
  
 Finished building: Controller.list
  
-14:10:10 **** Incremental Build of configuration Release for project Controller ****
+19:43:39 **** Incremental Build of configuration Release for project Controller ****
 make -j8 all 
-arm-none-eabi-gcc "../Core/Src/main.c" -mcpu=cortex-m3 -std=gnu11 -DUSE_HAL_DRIVER -DSTM32F103xB -c -I../Core/Inc -I../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I../Drivers/STM32F1xx_HAL_Driver/Inc -I../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I../Drivers/CMSIS/Include -Os -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Core/Src/main.d" -MT"Core/Src/main.o" --specs=nano.specs -mfloat-abi=soft -mthumb -o "Core/Src/main.o"
-../Core/Src/main.c: In function 'main':
-../Core/Src/main.c:908:37: warning: implicit declaration of function 'fabsf' [-Wimplicit-function-declaration]
-  908 |                                 if (fabsf(loadcell_1_door) < 5.0f)
-      |                                     ^~~~~
-../Core/Src/main.c:25:1: note: include '<math.h>' or provide a declaration of 'fabsf'
-   24 | #include <stdlib.h>    // atof, srand
-  +++ |+#include <math.h>
-   25 | #include <string.h>    // memset, memcpy, strstr, ...
-../Core/Src/main.c:908:37: warning: incompatible implicit declaration of built-in function 'fabsf' [-Wbuiltin-declaration-mismatch]
-  908 |                                 if (fabsf(loadcell_1_door) < 5.0f)
-      |                                     ^~~~~
-../Core/Src/main.c:908:37: note: include '<math.h>' or provide a declaration of 'fabsf'
-../Core/Src/main.c:910:37: warning: incompatible implicit declaration of built-in function 'fabsf' [-Wbuiltin-declaration-mismatch]
-  910 |                                 if (fabsf(loadcell_2_door) < 5.0f)
-      |                                     ^~~~~
-../Core/Src/main.c:910:37: note: include '<math.h>' or provide a declaration of 'fabsf'
-../Core/Src/main.c:1025:37: warning: incompatible implicit declaration of built-in function 'fabsf' [-Wbuiltin-declaration-mismatch]
- 1025 |                                 if (fabsf(loadcell_1_door) < 5.0f)
-      |                                     ^~~~~
-../Core/Src/main.c:1025:37: note: include '<math.h>' or provide a declaration of 'fabsf'
-../Core/Src/main.c:1027:37: warning: incompatible implicit declaration of built-in function 'fabsf' [-Wbuiltin-declaration-mismatch]
- 1027 |                                 if (fabsf(loadcell_2_door) < 5.0f)
-      |                                     ^~~~~
-../Core/Src/main.c:1027:37: note: include '<math.h>' or provide a declaration of 'fabsf'
-../Core/Src/main.c:1253:37: warning: incompatible implicit declaration of built-in function 'fabsf' [-Wbuiltin-declaration-mismatch]
- 1253 |                                 if (fabsf(loadcell_1) < 5.0f)
-      |                                     ^~~~~
-../Core/Src/main.c:1253:37: note: include '<math.h>' or provide a declaration of 'fabsf'
-../Core/Src/main.c:1255:37: warning: incompatible implicit declaration of built-in function 'fabsf' [-Wbuiltin-declaration-mismatch]
- 1255 |                                 if (fabsf(loadcell_2) < 5.0f)
-      |                                     ^~~~~
-../Core/Src/main.c:1255:37: note: include '<math.h>' or provide a declaration of 'fabsf'
-arm-none-eabi-gcc -o "Controller.elf" @"objects.list"   -mcpu=cortex-m3 -T"C:\Users\bb\Desktop\refeed\ControllerProject\WorkSpace_Controller10_1\controller10_1\Controller10_1\STM32F103C8TX_FLASH.ld" --specs=nosys.specs -Wl,-Map="Controller.map" -Wl,--gc-sections -static -u_printf_float --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
-Finished building target: Controller.elf
- 
 arm-none-eabi-size  Controller.elf 
-arm-none-eabi-objdump -h -S Controller.elf  > "Controller.list"
    text	   data	    bss	    dec	    hex	filename
-  38552	    544	   4920	  44016	   abf0	Controller.elf
+  38120	    548	   4924	  43592	   aa48	Controller.elf
 Finished building: default.size.stdout
- 
-Finished building: Controller.list
  

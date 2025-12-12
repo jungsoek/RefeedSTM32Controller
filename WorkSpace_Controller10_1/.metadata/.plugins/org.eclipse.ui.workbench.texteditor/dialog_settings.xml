@@ -3,6 +3,11 @@
 	<item key="hasShownOverlayPopupBefore" value="true"/>
 	<item key="replaceBarOpen" value="false"/>
 	<list key="searchhistory">
+		<item value="HAL_D"/>
+		<item value="recheck"/>
+		<item value="ws_th"/>
+		<item value="threshold"/>
+		<item value="220"/>
 		<item value="distanceStr"/>
 		<item value="VL53L0X_ReadDistance"/>
 		<item value="ver"/>
@@ -13,7 +18,5 @@
 		<item value="CheckHeader"/>
 		<item value="phonenum pars"/>
 		<item value="&quot;[ans]&quot;, &quot;OK&quot;"/>
-		<item value="i2c_check_buf"/>
-		<item value="LOG(&quot;[ANS]&quot;, &quot;FAIL&quot;);"/>
 	</list>
 </section>

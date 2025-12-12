@@ -22,8 +22,11 @@ C_DEPS :=
 
 # Every subdirectory with source files must be described here
 SUBDIRS := \
+Core/Src/DummyModules \
+Core/Src/Globals \
 Core/Src \
 Core/Src/Handlers \
+Core/Src/Router \
 Core/Startup \
 Drivers/STM32F1xx_HAL_Driver/Src \
 

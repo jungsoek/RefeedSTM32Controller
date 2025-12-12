@@ -1,0 +1,19 @@
+//======================================================
+// TestSDOpen.c
+//======================================================
+void TestSDOpen(void) {
+
+}
+
+
+//======================================================
+//                    LEGACY CODE
+//======================================================
+//Control motor
+//HAL_GPIO_WritePin(Door_IN1_GPIO_Port, Door_IN1_Pin,
+//		GPIO_PIN_SET);
+//HAL_GPIO_WritePin(Door_IN2_GPIO_Port, Door_IN2_Pin,
+//		GPIO_PIN_RESET);
+////Transmit to header
+//LOG("[ANS]", "OK");
+//FUNCTION = SPACE;

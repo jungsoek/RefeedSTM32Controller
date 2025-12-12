@@ -1,0 +1,150 @@
+#ifndef GLOBALS_H
+#define GLOBALS_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* ===== Include Dependencies ===== */
+#include "main.h"
+#include <stdint.h>
+#include <stdbool.h>
+#include "stm32f1xx_hal.h"
+#include <stdarg.h>
+#include <stdio.h>
+
+/* ===== UART Buffer Size (must match main.c) ===== */
+#ifndef UART_RX_BUFFER_SIZE
+#define UART_RX_BUFFER_SIZE   256
+#endif
+
+#define LOG_BUF_SIZE 256
+
+/* ===== Enums ===== */
+typedef enum {
+    HANDSHAKE,
+    VALIDATION,
+    POST_UCO,
+    POST_PER,
+    OPEN_INPUT,
+    CLOSE_INPUT,
+    RECHECK,
+    UNLOCK_DOOR,
+    SLEEP,
+    ALARM_WAKEUP,
+    EXTI_WAKEUP,
+    OPEN_VALVE,
+    CLOSE_VALVE,
+    TURN_OFF,
+    TEST_PERCENT,
+    TEST_MEASURE,
+    TEST_SDCLOSE,
+    TEST_SDOPEN,
+    SPACE,
+    SETTING
+} Msg_Header;
+
+typedef enum {
+    ERR_SIMCOM,
+    ERR_ULTRA,
+    ERR_TOF,
+    ERR_LOADCELL
+} Err_Device;
+
+/* ===== Global Function State ===== */
+extern Msg_Header FUNCTION;
+
+/* ===== RTC ===== */
+extern RTC_AlarmTypeDef sAlarm;
+extern RTC_TimeTypeDef sTime;
+
+/* ===== UART Receive Buffers ===== */
+extern uint8_t LOG_buffer[];
+extern uint8_t Rx_Buff[];
+extern volatile uint8_t Data_Received_Flag;
+
+/* ===== UART Transmit Buffers ===== */
+static char log_msg[];
+extern volatile bool LOG_DataValid;
+
+/* ===== Wakeup Flags ===== */
+extern volatile bool EXTI_Wakeup;
+extern volatile bool Alarm_Wakeup;
+extern volatile bool flag_EXTI;
+
+/* ===== SIM / Networking / URL ===== */
+extern char PhoneNum[];
+extern const char ID[];
+extern const char countryDialCode[];
+extern const char url_postper[];
+extern const char url_identity[];
+extern const char url_postuco[];
+extern char data_PostSimCom[];
+extern char data_TransmitHeader[];
+
+/* ===== I2C Debug Buffer ===== */
+extern char i2c_check_buf[];
+
+/* ===== Measurement Values ===== */
+extern float volume_water;
+extern float volume_oil;
+
+extern float value_VolContainer;
+extern float value_Voltage;
+
+extern float distance_Tof;
+
+extern float value_LoadCell_open;
+extern float value_LoadCell_close;
+extern float value_LoadCell_real;
+
+extern float water_weight;
+extern float ws_height;
+extern float oil_weight;
+extern float watersensor_value;
+extern float volume_total;
+
+extern float lc_mass_zero;
+extern float lc_mass_real;
+extern float lc_mass;
+
+extern float loadcell_1;
+extern float loadcell_1_testmeasure;
+extern float loadcell_1_handshake;
+extern float loadcell_2;
+extern float loadcell_2_testmeasure;
+extern float loadcell_2_handshake;
+
+extern float loadcell_sum;
+
+extern float loadcell_1_door;
+extern float loadcell_1_open;
+extern float loadcell_1_close;
+extern float loadcell_2_door;
+extern float loadcell_2_open;
+extern float loadcell_2_close;
+
+extern float ultra;
+
+/* ===== Pre-defined Data ===== */
+extern char data_Ok[];
+extern char data_Fail[];
+extern char data_Oil_Water[];
+extern const char *data_Post;
+
+/* ===== HAL Handles ===== */
+extern ADC_HandleTypeDef hadc1;
+extern ADC_HandleTypeDef hadc2;
+extern I2C_HandleTypeDef hi2c1;
+extern RTC_HandleTypeDef hrtc;
+extern TIM_HandleTypeDef htim1;
+extern UART_HandleTypeDef huart1;
+extern UART_HandleTypeDef huart2;
+
+HAL_StatusTypeDef LOG(const char *header, const char *cmd, ...);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* GLOBALS_H */

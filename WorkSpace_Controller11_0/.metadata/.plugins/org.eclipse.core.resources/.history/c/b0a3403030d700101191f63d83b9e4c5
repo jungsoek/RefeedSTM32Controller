@@ -1,0 +1,284 @@
+//======================================================
+// CloseInput.c (Fixed & Structured Version)
+//======================================================
+
+#include "Inc/handshake.h"
+#include "vl53l0x.h"   // VL53L0X 관련 구조체, 함수 선언
+#include <stdio.h>
+#include <string.h>
+#include <math.h>
+#include "Inc/CloseInput.h"
+
+// LOG 매크로
+#define LOG(tag, msg) printf("%s %s\r\n", tag, msg)
+
+
+
+//======================================================
+// 1) 모터 닫기
+//======================================================
+static void motor_close(void)
+{
+    HAL_GPIO_WritePin(Door_IN1_GPIO_Port, Door_IN1_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(Door_IN2_GPIO_Port, Door_IN2_Pin, GPIO_PIN_SET);
+    LOG("[MOTOR]", "Door closing");
+}
+
+//======================================================
+// 2) 물/기름 분리 대기 (30초)
+//======================================================
+static void wait_liquid_separation_30s(void)
+{
+    LOG("[WAIT]", "Waiting for liquid separation (30s)");
+    HAL_Delay(30000);
+}
+
+//======================================================
+// 3) I2C 점검 + BUSY/TIMEOUT 시 Reset
+//======================================================
+static void i2c_scan_and_reset(void)
+{
+    LOG("[I2C]", "I2C scan start");
+
+    for (uint16_t addr = 1; addr < 128; addr++)
+    {
+        HAL_StatusTypeDef st = HAL_I2C_IsDeviceReady(&hi2c1, addr << 1, 1, 5);
+
+        if (st == HAL_OK)
+        {
+            snprintf(i2c_check_buf, sizeof(i2c_check_buf), "Device: 0x%02X", addr);
+            LOG("[I2C]", i2c_check_buf);
+        }
+        else if (st == HAL_BUSY || st == HAL_TIMEOUT)
+        {
+            LOG("[I2C_ERR]", (st == HAL_BUSY) ? "BUSY" : "TIMEOUT");
+            __HAL_RCC_I2C1_FORCE_RESET();
+            HAL_Delay(2);
+            __HAL_RCC_I2C1_RELEASE_RESET();
+            LOG("[I2C]", "I2C1 reset performed");
+        }
+    }
+
+    LOG("[I2C]", "Scan complete");
+}
+
+//======================================================
+// 4) 센서 측정
+//======================================================
+static bool read_all_sensors(float *oil_w, float *water_w)
+{
+    if (!oil_w || !water_w)
+        return false;
+
+    // (1) ToF 센서
+    float dist = VL53L0X_ReadDistance(&distanceStr, offset_DistanceTof);
+    if (dist < 0)
+    {
+        LOG("[ANS]", "DIST_FAIL");
+        return false;
+    }
+    LOG("[ANS]", "DIST_SUCC");
+
+    // (2) Loadcell 측정
+    loadcell_1_close = HX711_Get_Value(&scale1, 30, 2000);
+    loadcell_2_close = HX711_Get_Value(&scale2, 30, 2000);
+
+    if (loadcell_1_close < 0) LOG("[ANS]", "LC1_FAIL");
+    else LOG("[ANS]", "LC1_SUCC");
+
+    if (loadcell_2_close < 0) LOG("[ANS]", "LC2_FAIL");
+    else LOG("[ANS]", "LC2_SUCC");
+
+    // (3) 열림 대비 변화량
+    loadcell_1_door = loadcell_1_close - loadcell_1_open;
+    loadcell_2_door = loadcell_2_close - loadcell_2_open;
+
+    if (fabsf(loadcell_1_door) < 5.0f) loadcell_1_door = 0;
+    if (fabsf(loadcell_2_door) < 5.0f) loadcell_2_door = 0;
+
+    float sum = loadcell_1_door + loadcell_2_door;
+    float lc_mass = HX711_InterpFromTable(sum);
+
+    // (4) Water sensor
+    float water_mass = WATER_ReadLastOn_Quick(220);
+    if (water_mass < 0)
+    {
+        LOG("[ANS]", "WS_FAIL");
+        return false;
+    }
+    LOG("[ANS]", "WS_SUCC");
+
+    // (5) Oil mass 계산
+    float oil_mass = lc_mass - water_mass;
+    if (oil_mass < 0) oil_mass = 0;
+
+    *oil_w = oil_mass;
+    *water_w = water_mass;
+
+    return true;
+}
+
+//======================================================
+// 5) Payload 생성
+//======================================================
+static bool build_closeinput_payload(char *out, size_t size, float oil_w, float water_w)
+{
+    if (!out || size == 0) return false;
+    snprintf(out, size, "O%.2fW%.2fE", oil_w, water_w);
+    return true;
+}
+
+//======================================================
+// 6) CloseInput 전체 프로세스
+//======================================================
+void DoorClose_Measure(void)
+{
+    LOG("[STATE]", "CLOSE_INPUT start");
+
+    float oil_weight = 0;
+    float water_weight = 0;
+
+    motor_close();
+    wait_liquid_separation_30s();
+    i2c_scan_and_reset();
+
+    if (!read_all_sensors(&oil_weight, &water_weight))
+    {
+        LOG("[ANS]", "FAIL");
+        FUNCTION = SPACE;
+        return;
+    }
+
+    memset(data_TransmitHeader, 0, sizeof(data_TransmitHeader));
+    build_closeinput_payload(data_TransmitHeader, sizeof(data_TransmitHeader), oil_weight, water_weight);
+    LOG("[ANS]", data_TransmitHeader);
+
+    LOG("[STATE]", "CLOSE_INPUT done");
+    FUNCTION = SPACE;
+}
+
+
+
+
+//======================================================
+//                    LEGACY CODE
+//======================================================
+///*Control motor*/
+//HAL_GPIO_WritePin(Door_IN1_GPIO_Port, Door_IN1_Pin,
+//		GPIO_PIN_RESET);
+//HAL_GPIO_WritePin(Door_IN2_GPIO_Port, Door_IN2_Pin,
+//		GPIO_PIN_SET);
+//
+//HAL_Delay(30000);
+//
+//for (uint16_t addr = 1; addr < 128; addr++) {
+//
+//	HAL_StatusTypeDef status = HAL_I2C_IsDeviceReady(&hi2c1,
+//			addr << 1, 1, 5);
+//
+//	if (status == HAL_OK) {
+//
+//		snprintf(i2c_check_buf, sizeof(i2c_check_buf),
+//				"I2C Device Found: 0x%02X\r\n", addr);
+//
+//		LOG("[I2C]", i2c_check_buf);
+//	} else if (status == HAL_BUSY) {
+//		LOG("[I2C]", "HAL_BUSY\r\n");
+//		__HAL_RCC_I2C1_FORCE_RESET();
+//		if (__HAL_RCC_I2C1_FORCE_RESET()) {
+//			__HAL_RCC_I2C1_RELEASE_RESET();
+//		} else {
+//			LOG("[I2C1_RST]", "I2C1_RESET_ERROR");
+//		}
+//
+//	} else if (status == HAL_TIMEOUT) {
+//		LOG("[I2C]", "HAL_TIMEOUT\r\n");
+//		__HAL_RCC_I2C1_FORCE_RESET();
+//		if (__HAL_RCC_I2C1_FORCE_RESET()) {
+//			__HAL_RCC_I2C1_RELEASE_RESET();
+//		} else {
+//			LOG("[I2C1_RST]", "I2C1_RESET_ERROR");
+//		}
+//	}
+//}
+//
+///*Take value from sensor*/
+//// load cell and tof sensor
+//if (VL53L0X_ReadDistance(&distanceStr, offset_DistanceTof)
+//		== -1.0f) {
+//	LOG("[ANS]", "DIST_FAIL");
+//} else {
+//	LOG("[ANS]", "DIST_SUCC");
+//}
+//
+//if (HX711_Get_Value(&scale1, 30, 2000) == -1.0f) {
+//	LOG("[ANS]", "LC1_FAIL");
+//} else {
+//	LOG("[ANS]", "LC1_SUCC");
+//}
+//
+//if (HX711_Get_Value(&scale2, 30, 2000) == -1.0f) {
+//	LOG("[ANS]", "LC2_FAIL");
+//} else {
+//	LOG("[ANS]", "LC2_SUCC");
+//}
+//
+//if (WATER_ReadLastOn_Quick(200) == -1.0f) {
+//	LOG("[ANS]", "WS_FAIL");
+//} else {
+//	LOG("[ANS]", "WS_SUCC");
+//}
+//
+//distance_Tof = VL53L0X_ReadDistance(&distanceStr,
+//		offset_DistanceTof); //(mm)
+//
+//loadcell_1_close = HX711_Get_Value(&scale1, 30, 2000);
+//loadcell_2_close = HX711_Get_Value(&scale2, 30, 2000);
+//
+//loadcell_1_door = loadcell_1_close - loadcell_1_open;
+//loadcell_2_door = loadcell_2_close - loadcell_2_open;
+//
+//if (fabsf(loadcell_1_door) < 5.0f)
+//	loadcell_1_door = 0.0f;
+//if (fabsf(loadcell_2_door) < 5.0f)
+//	loadcell_2_door = 0.0f;
+//
+//loadcell_sum = loadcell_1_door + loadcell_2_door;
+//
+//// Total mass using interpolation table HX711 (LC1 + LC2)
+//lc_mass = HX711_InterpFromTable(loadcell_sum);   // g 단위
+//
+//watersensor_value = WATER_ReadHeightMM(220);   //(mm)
+//water_weight = WATER_ReadLastOn_Quick(220);     //last_on index
+//
+///*Turn off the sensor*/
+//HAL_GPIO_WritePin(DEVICE_GPIO_Port, DEVICE_Pin, GPIO_PIN_SET);
+//
+////Transmit to header
+//oil_weight = lc_mass - water_weight;
+//if (oil_weight < 0.0f)
+//	oil_weight = 0.0f;
+//
+//memset(data_TransmitHeader, '\0', sizeof(data_TransmitHeader));
+//snprintf(data_TransmitHeader, 40, "O%.2fW%.2fE", oil_weight,
+//		water_weight);
+//LOG("[ANS]", data_TransmitHeader);
+//
+//// (1) HX711 Original value
+//snprintf(data_TransmitHeader, sizeof(data_TransmitHeader),
+//		"Distance=%.2f mm, LC1_raw=%.2f, LC2_raw=%.2f;",
+//		distance_Tof, loadcell_1_door, loadcell_2_door);
+//LOG("[ANS]", data_TransmitHeader);
+//// (1) HX711 Original value
+//snprintf(data_TransmitHeader, sizeof(data_TransmitHeader),
+//		"lc1_open=%.2f g, lc2_open=%.2f g, lc1_close=%.2f g, lc2_close=%.2f g;",
+//		loadcell_1_open, loadcell_2_open, loadcell_1_close,
+//		loadcell_2_close);
+//LOG("[ANS]", data_TransmitHeader);
+//// (2) Total mass that brought by interpolation table vs Water weight that sensed by water sensor.
+//snprintf(data_TransmitHeader, sizeof(data_TransmitHeader),
+//		"LC_mass=%.1f g, WS_mass=%.1f g, Oil_mass=%.1f g;",
+//		lc_mass, water_weight, oil_weight);
+//LOG("[ANS]", data_TransmitHeader);
+//
+//FUNCTION = SPACE;

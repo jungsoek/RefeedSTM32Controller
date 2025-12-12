@@ -1,0 +1,16 @@
+//======================================================
+// UnlockDoor.c
+//======================================================
+
+
+
+//======================================================
+//                    LEGACY CODE
+//======================================================
+///* unlock big door for driver */
+//HAL_GPIO_WritePin(LOCK_GPIO_Port, LOCK_Pin, GPIO_PIN_SET);
+//HAL_Delay(500);
+//HAL_GPIO_WritePin(LOCK_GPIO_Port, LOCK_Pin, GPIO_PIN_RESET);
+///*Transmit to header*/
+//LOG("[ANS]", "OK");
+//FUNCTION = SPACE;

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<section name="Workbench">
+	<item key="hasShownOverlayPopupBefore" value="true"/>
+	<item key="replaceBarOpen" value="false"/>
+	<list key="searchhistory">
+		<item value="UART_HandleTypeDef huart1;"/>
+		<item value="static char log_msg[LOG_BUF_SIZE];"/>
+		<item value="HAL_StatusTypeDef LOG"/>
+		<item value="huart1"/>
+	</list>
+</section>

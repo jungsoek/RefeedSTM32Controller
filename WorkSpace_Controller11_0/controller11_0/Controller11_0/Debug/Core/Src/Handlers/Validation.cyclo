@@ -1,7 +1,1 @@
-../Core/Src/Handlers/Validation.c:16:6:parsePhoneNumber	12
-../Core/Src/Handlers/Validation.c:47:6:isPhoneNumberValid	5
-../Core/Src/Handlers/Validation.c:61:6:buildIdentityJSON	6
-../Core/Src/Handlers/Validation.c:80:6:simWakeupCheck	1
-../Core/Src/Handlers/Validation.c:88:11:simIdentityRequest	8
-../Core/Src/Handlers/Validation.c:108:6:printSimResult	5
-../Core/Src/Handlers/Validation.c:122:6:Validation	5
+../Core/Src/Handlers/Validation.c:5:6:Validation	1

@@ -1,3 +1,1 @@
-../Core/Src/Handlers/PostUCO.c:14:6:build_post_uco_payload	8
-../Core/Src/Handlers/PostUCO.c:43:15:sim_post_request	8
-../Core/Src/Handlers/PostUCO.c:86:6:PostUCO	6
+../Core/Src/Handlers/PostUCO.c:6:6:PostUCO	1

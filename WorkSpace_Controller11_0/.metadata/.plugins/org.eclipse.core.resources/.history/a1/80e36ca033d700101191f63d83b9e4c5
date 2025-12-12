@@ -1,0 +1,189 @@
+
+
+
+//======================================================
+// Handshake.c
+//======================================================
+
+
+
+
+//======================================================
+//                    LEGACY CODE
+//======================================================
+////for debug and fail device checking
+//uint16_t error_code = 0;
+//char error_code_char[10];
+//
+//for (int i = 0; i < 10; i++) {
+//	HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
+//	HAL_Delay(100); // 0.1sec delay
+//}
+//HAL_GPIO_WritePin(DEVICE_GPIO_Port, DEVICE_Pin, GPIO_PIN_RESET); //Turn on sensor
+//initVL53L0X(1, &hi2c1);
+//HX711_Init(&scale1, LC_Data1_GPIO_Port, LC_Data1_Pin,
+//LC_SCK_GPIO_Port, LC_SCK_Pin, calibration_factor);
+//HX711_Init(&scale2, LC_Data2_GPIO_Port, LC_Data2_Pin,
+//LC_SCK_GPIO_Port, LC_SCK_Pin, calibration_factor);
+//
+//ultra = Ultra_ReadDistance();
+//
+//if (SIM_Wakeup(800) != 0) {
+//	error_code += 1;
+//} else {
+//	LOG("[ANS]", "SIM_OK");
+//}
+//
+//if (VL53L0X_OFFSET(&distanceStr) == -1.0f) {
+//	error_code += 10;
+//} else {
+//	LOG("[ANS]", "LASER_OK");
+//}
+//
+//if (ultra == -1.0f) {
+//	error_code += 100;
+//} else if (ultra != -1.0f) {
+//	LOG("[ANS]", "ULTRA_OK");
+//	if ((ultra <= 20.0)
+//			&& (ultra >= 0)) {
+//		LOG("[ANS]", "FULL");
+//	}
+//}
+//
+//if (HX711_Tare(&scale1, 1, 100) == -1.0f || HX711_Tare(&scale2, 1, 100) == -1.0f) {
+//	error_code += 1000;
+//	if (HX711_Get_Value(&scale1, 30, 2000) == -1.0f
+//			|| HX711_Get_Value(&scale2, 30, 2000) == -1.0f) {
+//		if (HX711_Get_Value(&scale1, 30, 2000) == -1.0f) {
+//		} else {
+//			LOG("[ANS]", "LC1_OK");
+//		}
+//		if (HX711_Get_Value(&scale2, 30, 2000) == -1.0f) {
+//		} else {
+//			LOG("[ANS]", "LC2_OK");
+//		}
+//	}
+//}
+//
+//if (WATER_ReadLastOn_Quick(200) == -1.0f) {
+//	error_code += 10000;
+//} else {
+//	LOG("[ANS]", "WS_OK");
+//}
+//
+//if (error_code == 0) {
+//	LOG("[ANS]", "OK");
+//} else {
+//	// I2C 상태 점검
+//	for (uint16_t addr = 1; addr < 128; addr++) {
+//		HAL_StatusTypeDef status = HAL_I2C_IsDeviceReady(&hi2c1, addr << 1, 1, 5);
+//		// I2C HAL 상태가 HAL_OK라면 I2C 주소 출력
+//		if (status == HAL_OK) {
+//			snprintf(i2c_check_buf, sizeof(i2c_check_buf), "I2C Device Found: 0x%02X\r\n", addr);
+//			LOG("[I2C]", i2c_check_buf);
+//		// I2C HAL 상태가 HAL_BUSY 상태라면
+//		} else if (status == HAL_BUSY) {
+//			LOG("[I2C]", i2c_check_buf);
+//			LOG("[I2C]", "HAL_BUSY\r\n");
+//			// 100번을 채우거나 HAL_OK가 될때까지 루프를 돈다.
+//			for (int i = 0; i < 100; i++) {
+//				// I2C 비활성화
+//				HAL_I2C_DeInit();
+//				// I2C1 하드웨어 강제 리셋
+//				__HAL_RCC_I2C1_FORCE_RESET();
+//				HAL_Delay(10);
+//				LOG("[I2C]", "FORCE_RST_TRYING...");
+//				// I2C1이 강제 리셋되었다면
+//				if (RCC->APB1RSTR & RCC_APB1RSTR_I2C1RST) {
+//					LOG("[I2C]", "I2C1_RESET_BIT_ON");
+//					LOG("[I2C]", "RELEASE_RST_TRYING...");
+//					// I2C1 리셋 해제
+//					__HAL_RCC_I2C1_RELEASE_RESET();
+//					// I2C1 리셋 해제가 되었다면
+//					if ((RCC->APB1RSTR & RCC_APB1RSTR_I2C1RST) == 0) {
+//						LOG("[I2C]", "I2C1_RESET_BIT_OFF");
+//						LOG("[I2C]", "I2C1_RESET_SUCCESS");
+//						// HAL_I2C 활성화
+//						HAL_I2C_Init();
+//						// 안정화 DELAY
+//						HAL_Delay(10);
+//						// HAL_I2C 초기화 후 상태가 HAL_OK가 아니라면
+//						if (HAL_I2C_Init(&hi2c1) != HAL_OK) {
+//							LOG("[I2C]", "HAL_INIT_FAIL");
+//							continue;   // 다음 루프 계속 진행
+//						} else {
+//							LOG("[I2C]", "HAL_INIT_OK");
+//						}
+//					}
+//				} else {
+//					LOG("[I2C1_RST]", "I2C1_RESET_FAIL");
+//				}
+//
+//				status = HAL_I2C_IsDeviceReady(&hi2c1, addr << 1, 1, 5);
+//
+//				if (status == HAL_OK) {
+//					break;
+//				}
+//			}
+//
+//		} else if (status == HAL_TIMEOUT) {
+//			LOG("[I2C]", "HAL_TIMEOUT\r\n");
+//			__HAL_RCC_I2C1_FORCE_RESET();
+//			HAL_Delay(10);
+//			if (RCC->APB1RSTR & RCC_APB1RSTR_I2C1RST) {
+//			__HAL_RCC_I2C1_RELEASE_RESET();
+//			} else {
+//				LOG("[I2C1_RST]", "I2C1_RESET_ERROR");
+//			}
+//			HAL_I2C_DeInit(&hi2c1);
+//			HAL_Delay(10);
+//			HAL_I2C_Init(&hi2c1);
+//
+//			status = HAL_I2C_IsDeviceReady(&hi2c1, addr << 1, 1, 5);
+//		}
+//	}
+//
+//	i2c_check_buf[0] = 0;
+//
+//	snprintf(error_code_char, sizeof(error_code_char), "%d",
+//			error_code);
+//
+////					LOG("[ANS]", "FAIL");
+//
+//	LOG("[DEBUG]", error_code_char);
+//
+//	// SIM FAIL (1)
+//	if (error_code % 10 == 1) {
+//		LOG("[ERR]", "SIM_FAIL");
+//	}
+//
+//	// LASER FAIL (10)
+//	if ((error_code / 10) % 10 == 1) {
+//		LOG("[ERR]", "LASER_FAIL");
+//	}
+//
+//	// ULTRA FAIL (100)
+//	if ((error_code / 100) % 10 == 1) {
+//		LOG("[ERR]", "ULTRA_FAIL");
+//	}
+//
+//	// LOAD CELL FAIL (1000)
+//	if ((error_code / 1000) % 10 == 1) {
+//		LOG("[ERR]", "LOADCELL_FAIL");
+//	}
+//
+//	// WATER SENSOR FAIL (10000)
+//	if ((error_code / 10000) % 10 == 1) {
+//		LOG("[ERR]", "WATER_SENSOR_FAIL");
+//	}
+//
+//	error_code = 0;
+//}
+//
+//HAL_Delay(100);
+//
+//loadcell_1_handshake = HX711_Get_Value(&scale1, 10, 2000);
+//loadcell_2_handshake = HX711_Get_Value(&scale2, 10, 2000);
+//
+//SIM_Sleep(300);
+//FUNCTION = SPACE;

@@ -1,0 +1,20 @@
+#ifndef ROUTER_H
+#define ROUTER_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include "globals.h"   // Msg_Header, FUNCTION, LOG_buffer 등 필요
+
+/*
+ * 라우터의 메인 엔트리
+ * LOG_buffer 내용 기반으로 FUNCTION 값을 결정한다.
+ */
+void CheckHeader(void);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* ROUTER_H */

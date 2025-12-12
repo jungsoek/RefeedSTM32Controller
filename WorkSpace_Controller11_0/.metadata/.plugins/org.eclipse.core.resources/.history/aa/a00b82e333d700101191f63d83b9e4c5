@@ -1,0 +1,94 @@
+//======================================================
+// FORMAT.c
+//======================================================
+
+
+
+//======================================================
+//                    LEGACY CODE
+//======================================================
+//Turn on the sensor
+//HAL_GPIO_WritePin(DEVICE_GPIO_Port, DEVICE_Pin, GPIO_PIN_RESET);
+//HAL_Delay(1500);
+//
+///* ===========================
+// *  I2C Bus Scan (hi2c1)
+// * ===========================*/
+//for (uint8_t addr7 = 1; addr7 < 128; addr7++) {
+//	// HAL is expecting 8-bit address(7bit << 1)
+//	HAL_StatusTypeDef st = HAL_I2C_IsDeviceReady(&hi2c1,
+//			(uint16_t) (addr7 << 1), 1, 5);
+//	if (st == HAL_OK) {
+//		snprintf(data_TransmitHeader,
+//				sizeof(data_TransmitHeader),
+//				"I2C FOUND: 0x%02X", addr7);
+//		LOG("[DEBUG]", data_TransmitHeader);
+//	}
+//}
+//
+//ultra = Ultra_ReadDistance();
+//
+//snprintf(data_TransmitHeader, sizeof(data_TransmitHeader),
+//		"Ultra=%.2f cm", ultra); // ToDo : Set the unit correctly
+//LOG("[ANS]", data_TransmitHeader);
+//
+//// 1) Read the Sensing data.
+//distance_Tof = VL53L0X_ReadDistance(&distanceStr,
+//		offset_DistanceTof); //(mm)
+//
+//// HX711 Original data (to debug)
+//loadcell_1_testmeasure = HX711_Get_Value(&scale1, 30, 2000);
+//loadcell_2_testmeasure = HX711_Get_Value(&scale2, 30, 2000);
+//
+//loadcell_1 = loadcell_1_testmeasure - loadcell_1_open;
+//loadcell_2 = loadcell_2_testmeasure - loadcell_2_open;
+//
+//// remove the noise around 0.
+//if (fabsf(loadcell_1) < 5.0f)
+//	loadcell_1 = 0.0f;
+//if (fabsf(loadcell_2) < 5.0f)
+//	loadcell_2 = 0.0f;
+//
+//loadcell_sum = loadcell_1 + loadcell_2;
+//
+//// Total mass using interpolation table HX711 (LC1 + LC2)
+//lc_mass = HX711_InterpFromTable(loadcell_sum);   // unit : g
+//
+//// Estimation water mass by WATERSENSOR
+//ws_height = WATER_ReadHeightMM_Quick(220);    // unit : mm
+//water_weight = WATER_ReadLastOn_Quick(220);       // unit :g
+//
+//// Estimated oil mass = total mass - water weight
+//oil_weight = lc_mass - water_weight;
+//if (oil_weight < 0.0f) {
+//	oil_weight = 0.0f;   // Keep the value at 0 or above.
+//}
+//
+////Turn off the sensor
+//HAL_GPIO_WritePin(DEVICE_GPIO_Port, DEVICE_Pin, GPIO_PIN_SET);
+//
+//// 2) Print the UART Log
+//
+//// (1) HX711 Original value.
+//snprintf(data_TransmitHeader, sizeof(data_TransmitHeader),
+//		"Distance=%.2f mm, LC1_raw=%.2f, LC2_raw=%.2f;",
+//		distance_Tof, loadcell_1, loadcell_2);
+//LOG("[ANS]", data_TransmitHeader);
+//// (1) HX711 Original value.
+//snprintf(data_TransmitHeader, sizeof(data_TransmitHeader),
+//		"lc1_test=%.2f g, lc2_test=%.2f g, lc1_open=%.2f g, lc2_open=%.2f g;",
+//		loadcell_1_testmeasure, loadcell_2_testmeasure,
+//		loadcell_1_open, loadcell_2_open);
+//LOG("[ANS]", data_TransmitHeader);
+//// (2) (2) Total mass that brought by interpolation table vs Water weight that sensed by water sensor.
+//snprintf(data_TransmitHeader, sizeof(data_TransmitHeader),
+//		"LC_mass=%.1f g, WS_mass=%.1f g, Oil_mass=%.1f g;",
+//		lc_mass, water_weight, oil_weight);
+//LOG("[ANS]", data_TransmitHeader);
+//
+//// (3) WATERSENSOR height debug
+//snprintf(data_TransmitHeader, sizeof(data_TransmitHeader),
+//		"WS_height=%.1f mm", ws_height);
+//LOG("[DEBUG]", data_TransmitHeader);
+//
+//FUNCTION = SPACE;

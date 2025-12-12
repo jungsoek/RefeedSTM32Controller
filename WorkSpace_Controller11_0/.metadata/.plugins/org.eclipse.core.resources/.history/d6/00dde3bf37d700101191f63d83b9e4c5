@@ -1,0 +1,150 @@
+// Receive buffer
+RTC_AlarmTypeDef sAlarm = { 0 };
+RTC_TimeTypeDef sTime = { 0 };
+
+uint8_t LOG_buffer[UART_RX_BUFFER_SIZE];
+uint8_t Rx_Buff[UART_RX_BUFFER_SIZE]; // 실제 수신 버퍼
+volatile uint8_t Data_Received_Flag = 0; // 플래그 정의
+
+/* USER CODE END PV */
+
+// Sending buffer
+char log_msg[UART_RX_BUFFER_SIZE];
+volatile bool LOG_DataValid = false;
+
+//Wake up
+volatile bool EXTI_Wakeup = false;
+volatile bool Alarm_Wakeup = false;
+volatile bool flag_EXTI = false;
+//POST PhoneNum
+char PhoneNum[20];
+
+//Data SIM, id
+const char ID[] = "testmachine";
+const char countryDialCode[] = "+84";
+const char url_postper[] = "https://api.admin.bi-oil.app/postcontainer";
+const char url_identity[] = "https://api.admin.bi-oil.app/identity";
+const char url_postuco[] = "https://api.admin.bi-oil.app/postuco";
+static char data_PostSimCom[150];
+
+//Data herder
+char data_TransmitHeader[100];
+
+// I2C Communication Status Buffer
+char i2c_check_buf[256];
+
+//Value water and oil
+float volume_water; //(Liter)
+float volume_oil;   //(Liter)
+
+//Volume on container and battery
+float value_VolContainer; // (%)
+float value_Voltage;	  // (V)
+
+float distance_Tof = -1.0f;
+float value_LoadCell_open = -1.0f;
+float value_LoadCell_close = -1.0f;
+float value_LoadCell_real = -1.0f;
+
+float water_weight = -1.0f;
+float ws_height = -1.0f;
+float oil_weight = -1.0f;
+float watersensor_value = -1.0f;
+float volume_total = -1.0f;
+
+float lc_mass_zero = -1.0f;
+float lc_mass_real = -1.0f;
+float lc_mass = -1.0f;
+
+float loadcell_1 = -1.0f;
+float loadcell_1_testmeasure = -1.0f;
+float loadcell_1_handshake = -1.0f;
+
+float loadcell_2 = -1.0f;
+float loadcell_2_testmeasure = -1.0f;
+float loadcell_2_handshake = -1.0f;
+
+float loadcell_sum = -0.1f;
+
+float loadcell_1_door = -1.0f;
+float loadcell_1_open = -1.0f;
+float loadcell_1_close = -1.0f;
+
+float loadcell_2_door = -1.0f;
+float loadcell_2_open = -1.0f;
+float loadcell_2_close = -1.0f;
+
+float ultra = -1.0f;
+
+//float volume_WS = -1.0f;
+/////
+char data_Ok[] = "OK";
+char data_Fail[] = "FAIL";
+char data_Oil_Water[] = "O1.23W4.56E";
+const char *data_Post = "{\"volume\": 123,\"battery\": 456}";
+
+typedef enum {
+	HANDSHAKE,
+	VALIDATION,
+	POST_UCO,
+	POST_PER,
+	OPEN_INPUT,
+	CLOSE_INPUT,
+	RECHECK,
+	UNLOCK_DOOR,
+	SLEEP,
+	ALARM_WAKEUP,
+	EXTI_WAKEUP,
+	OPEN_VALVE,
+	CLOSE_VALVE,
+	TURN_OFF,
+	TEST_PERCENT,
+	TEST_MEASURE,
+	TEST_SDCLOSE,
+	TEST_SDOPEN,
+	SPACE,
+	SETTING
+} Msg_Header;
+
+typedef enum {
+	ERR_SIMCOM, ERR_ULTRA, ERR_TOF, ERR_LOADCELL
+} Err_Device;
+
+Msg_Header FUNCTION;
+
+//typedef enum {
+//	IDLE,			// Run without doing anything and not sleep
+//	INIT,			// Initiate peripheral and handshake
+//	VALID,			// Check if user is valid or not QR and NUM input, Update number or QR, machine id to the server
+//	OPENS,			// Open small door
+//	POSTPER,		// Update the container percentage
+//	CLOSES,			// Close the door and start the measuring process
+//	POSTDATA,		// Update the user id, input amount and machine if to the server
+//	SLEEP,			// Sleep allowance and go to sleep
+//	ALARM,			// Display update and stop user from using machine
+//} command;
+
+/* USER CODE END PTD */
+
+/* Private define ------------------------------------------------------------*/
+/* USER CODE BEGIN PD */
+
+/* USER CODE END PD */
+
+/* Private macro -------------------------------------------------------------*/
+/* USER CODE BEGIN PM */
+
+/* USER CODE END PM */
+
+/* Private variables ---------------------------------------------------------*/
+ADC_HandleTypeDef hadc1;
+ADC_HandleTypeDef hadc2;
+
+I2C_HandleTypeDef hi2c1;
+
+RTC_HandleTypeDef hrtc;
+
+TIM_HandleTypeDef htim1;
+
+UART_HandleTypeDef huart1;
+UART_HandleTypeDef huart2;

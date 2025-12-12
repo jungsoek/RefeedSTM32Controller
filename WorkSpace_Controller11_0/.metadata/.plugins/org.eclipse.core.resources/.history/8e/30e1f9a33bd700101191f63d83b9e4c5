@@ -1,0 +1,22 @@
+//======================================================
+// Setting.c
+//======================================================
+void Setting(void) {
+
+}
+
+
+//======================================================
+//                    LEGACY CODE
+//======================================================
+//ultra = Ultra_ReadDistance();
+//value_VolContainer = (525 - ultra) / 525 * 80;
+//
+//if (value_VolContainer < 0.0f) {
+//	value_VolContainer = 0.0f;
+//}
+//
+//snprintf(data_TransmitHeader, sizeof(data_TransmitHeader),
+//		"Container=%.2f L", value_VolContainer); // ToDo : Set the unit correctly
+//LOG("[ANS]", data_TransmitHeader);
+//FUNCTION = SPACE;

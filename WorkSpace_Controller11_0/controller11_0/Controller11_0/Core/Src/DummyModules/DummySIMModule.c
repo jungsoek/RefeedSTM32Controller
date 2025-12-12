@@ -1,0 +1,43 @@
+
+#include <stdint.h>
+#include <string.h>
+
+/* ===== TEMP: SIM FAKE MODE (no real SIM card) ===== */
+#define SIM_FAKE_MODE   1
+
+#if SIM_FAKE_MODE
+
+// SIM 쪽 C 파일에 실제 정의가 있어야 함.
+extern uint8_t SIM_data[];
+
+// url / payload 보고 가짜 응답을 SIM_data 에 넣어주는 함수
+static void SIM_FakeFillResponse(const char *payload, const char *url) {
+	// 1) identity → 로그인/드라이버 체크
+	if (strstr(url, "identity")) {
+		/*
+		 * 여기서 payload 안에 phoneNumber 보고
+		 * 특정 번호는 driver:true, 나머지는 driver:false
+		 * 이렇게 나누고 싶으면 조건 더 넣으면 됨.
+		 *
+		 * 기본은 일반 유저: driver:false
+		 */
+		strcpy((char*) SIM_data, "{\"driver\":false}");
+	}
+	// 2) postcontainer / postuco 등 나머지 → true 응답
+	else {
+		strcpy((char*) SIM_data, "true");
+	}
+}
+
+// SIM_Wakeup: 항상 성공
+#define SIM_Wakeup(timeout_ms)   (0)
+
+// SIM_Sleep: 그냥 HAL_Delay
+#define SIM_Sleep(delay_ms)      HAL_Delay(delay_ms)
+
+// SIMCom_Post: 실제 통신 안 하고 가짜 응답 넣고 "성공" 리턴
+// main.c 에서는 if (!SIMCom_Post(...)) 형식이므로 0 이 성공이어야 함
+#define SIMCom_Post(payload, url, timeout_ms) \
+	( SIM_FakeFillResponse(payload, url), 0 )
+
+#endif
