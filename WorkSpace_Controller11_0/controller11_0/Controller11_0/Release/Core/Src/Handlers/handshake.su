@@ -1,0 +1,8 @@
+../Core/Src/Handlers/handshake.c:20:19:I2C_Recover	0	static
+../Core/Src/Handlers/handshake.c:29:6:I2C_DumpDevices	88	static
+../Core/Src/Handlers/handshake.c:46:6:CheckSIM	8	static
+../Core/Src/Handlers/handshake.c:58:6:CheckLaser	8	static
+../Core/Src/Handlers/handshake.c:70:6:CheckUltra	8	static
+../Core/Src/Handlers/handshake.c:83:6:CheckLoadcell	8	static
+../Core/Src/Handlers/handshake.c:96:6:CheckWater	8	static
+../Core/Src/Handlers/handshake.c:111:6:Handshake	24	static

@@ -1,0 +1,57 @@
+18:36:14 **** Incremental Build of configuration Release for project Controller ****
+make -j8 all 
+arm-none-eabi-gcc "../Core/Src/main.c" -mcpu=cortex-m3 -std=gnu11 -DUSE_HAL_DRIVER -DSTM32F103xB -c -I../Core/Inc -I../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I../Drivers/STM32F1xx_HAL_Driver/Inc -I../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I../Drivers/CMSIS/Include -Os -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Core/Src/main.d" -MT"Core/Src/main.o" --specs=nano.specs -mfloat-abi=soft -mthumb -o "Core/Src/main.o"
+../Core/Src/main.c: In function 'main':
+../Core/Src/main.c:652:78: warning: statement with no effect [-Wunused-value]
+  652 |                                           loadcell_1_open == -1.0f ? 123.123 : loadcell_1_open;
+      |                                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~
+../Core/Src/main.c:653:78: warning: statement with no effect [-Wunused-value]
+  653 |                                           loadcell_2_open == -1.0f ? 456.456 : loadcell_2_open; // end of loadcell_1,2 open dummy data declaration
+      |                                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~
+../Core/Src/main.c:678:73: warning: statement with no effect [-Wunused-value]
+  678 |                                           distance_Tof == -1.0f ? 123.1 : distance_Tof; // end of distance_Tof dummy data declaration
+      |                                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~
+../Core/Src/main.c:680:79: warning: statement with no effect [-Wunused-value]
+  680 |                                           loadcell_1_close == -1.0f ? 123.123 : loadcell_1_close;
+      |                                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~
+../Core/Src/main.c:681:79: warning: statement with no effect [-Wunused-value]
+  681 |                                           loadcell_2_close == -1.0f ? 456.456 : loadcell_2_close; // end of loadcell_1,2_close dummy data declaration
+      |                                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~
+../Core/Src/main.c:683:78: warning: statement with no effect [-Wunused-value]
+  683 |                                           loadcell_1_open == -1.0f ? 123.123 : loadcell_1_open;
+      |                                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~
+../Core/Src/main.c:684:78: warning: statement with no effect [-Wunused-value]
+  684 |                                           loadcell_2_open == -1.0f ? 123.123 : loadcell_2_open; // end of loadcell_1,2_open dummy data declaration
+      |                                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~
+../Core/Src/main.c:705:78: warning: statement with no effect [-Wunused-value]
+  705 |                                           watersensor_value == -1.0f ? 12.34 : watersensor_value; // end of watersensor_value dummy data declaration
+      |                                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~
+../Core/Src/main.c:706:73: warning: statement with no effect [-Wunused-value]
+  706 |                                           water_weight == -1.0f ? 56.78 : watersensor_value; // end of water_weight dummy data declaration
+      |                                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~
+../Core/Src/main.c:913:73: warning: statement with no effect [-Wunused-value]
+  913 |                                           distance_Tof == -1.0f ? 123.1 : distance_Tof; // end of distance_Tof dummy data declaration
+      |                                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~
+../Core/Src/main.c:923:83: warning: statement with no effect [-Wunused-value]
+  923 |                                           loadcell_1_testmeasure == -1.0f ? 12.34 : loadcell_1_testmeasure;
+      |                                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+../Core/Src/main.c:924:83: warning: statement with no effect [-Wunused-value]
+  924 |                                           loadcell_2_testmeasure == -1.0f ? 45.67 : loadcell_2_testmeasure;
+      |                                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+../Core/Src/main.c:402:20: warning: unused variable 'offset_DistanceTof' [-Wunused-variable]
+  402 |           uint16_t offset_DistanceTof = VL53L0X_OFFSET(&distanceStr);
+      |                    ^~~~~~~~~~~~~~~~~~
+arm-none-eabi-gcc -o "Controller.elf" @"objects.list"   -mcpu=cortex-m3 -T"C:\Users\bb\Desktop\refeed\ControllerProject\WorkSpace_Controller9\controller9\Controller9\STM32F103C8TX_FLASH.ld" --specs=nosys.specs -Wl,-Map="Controller.map" -Wl,--gc-sections -static -u_printf_float --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+Finished building target: Controller.elf
+ 
+arm-none-eabi-size  Controller.elf 
+arm-none-eabi-objdump -h -S Controller.elf  > "Controller.list"
+   text	   data	    bss	    dec	    hex	filename
+  40904	    536	   4768	  46208	   b480	Controller.elf
+Finished building: default.size.stdout
+ 
+Finished building: Controller.list
+ 
+
+18:36:16 Build Finished. 0 errors, 13 warnings. (took 1s.745ms)
+

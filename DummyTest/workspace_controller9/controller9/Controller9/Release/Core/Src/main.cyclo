@@ -1,0 +1,16 @@
+../Core/Src/main.c:1347:13:MX_USART1_UART_Init	2
+../Core/Src/main.c:1380:13:MX_USART2_UART_Init	2
+../Core/Src/main.c:1103:13:MX_ADC1_Init	3
+../Core/Src/main.c:1150:13:MX_ADC2_Init	3
+../Core/Src/main.c:1413:13:MX_GPIO_Init	1
+../Core/Src/main.c:1197:13:MX_I2C1_Init	2
+../Core/Src/main.c:43:14:SIM_FakeFillResponse.constprop	2
+../Core/Src/main.c:306:20:LOG	1
+../Core/Src/main.c:250:7:CheckHeader	18
+../Core/Src/main.c:342:8:VolumeTotal	4
+../Core/Src/main.c:1054:6:SystemClock_Config	4
+../Core/Src/main.c:369:5:main	57
+../Core/Src/main.c:1494:7:HAL_UARTEx_RxEventCallback	5
+../Core/Src/main.c:1527:7:HAL_GPIO_EXTI_Callback	3
+../Core/Src/main.c:1536:7:HAL_RTC_AlarmAEventCallback	1
+../Core/Src/main.c:1549:6:Error_Handler	1

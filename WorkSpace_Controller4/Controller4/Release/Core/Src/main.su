@@ -1,0 +1,10 @@
+../Core/Src/main.c:1092:13:MX_GPIO_Init	64	static
+../Core/Src/main.c:218:19:LOG	16	static
+../Core/Src/main.c:167:6:CheckHeader	8	static
+../Core/Src/main.c:254:7:VolumeTotal	24	static
+../Core/Src/main.c:733:6:SystemClock_Config	88	static,ignoring_inline_asm
+../Core/Src/main.c:281:5:main	48	static,ignoring_inline_asm
+../Core/Src/main.c:1173:6:HAL_UARTEx_RxEventCallback	8	static
+../Core/Src/main.c:1192:6:HAL_GPIO_EXTI_Callback	8	static
+../Core/Src/main.c:1202:6:HAL_RTC_AlarmAEventCallback	0	static
+../Core/Src/main.c:1214:6:Error_Handler	0	static,ignoring_inline_asm

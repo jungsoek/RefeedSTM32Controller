@@ -1,0 +1,4 @@
+../Core/Src/Handlers/Recheck.c:13:13:scan_i2c_devices	6
+../Core/Src/Handlers/Recheck.c:34:13:read_all_sensors	1
+../Core/Src/Handlers/Recheck.c:51:13:check_sensor_status	5
+../Core/Src/Handlers/Recheck.c:61:6:Recheck	4

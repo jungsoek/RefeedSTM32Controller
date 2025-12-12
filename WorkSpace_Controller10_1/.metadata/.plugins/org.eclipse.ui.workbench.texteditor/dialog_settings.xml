@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<section name="Workbench">
+	<item key="hasShownOverlayPopupBefore" value="true"/>
+	<item key="replaceBarOpen" value="false"/>
+	<list key="searchhistory">
+		<item value="distanceStr"/>
+		<item value="VL53L0X_ReadDistance"/>
+		<item value="ver"/>
+		<item value="initVL53L0X"/>
+		<item value="distance_tof"/>
+		<item value="offset_DistanceTof"/>
+		<item value="VL53L0X_OFFSET"/>
+		<item value="CheckHeader"/>
+		<item value="phonenum pars"/>
+		<item value="&quot;[ans]&quot;, &quot;OK&quot;"/>
+		<item value="i2c_check_buf"/>
+		<item value="LOG(&quot;[ANS]&quot;, &quot;FAIL&quot;);"/>
+	</list>
+</section>

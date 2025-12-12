@@ -1,0 +1,4 @@
+../Core/Src/HX711.c:4:6:HX711_Init	0	static
+../Core/Src/HX711.c:14:9:HX711_Read	16	static
+../Core/Src/HX711.c:46:7:HX711_Tare	24	static
+../Core/Src/HX711.c:62:7:HX711_Get_Value	24	static

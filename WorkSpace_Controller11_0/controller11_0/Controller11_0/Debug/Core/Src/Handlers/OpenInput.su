@@ -1,0 +1,5 @@
+../Core/Src/Handlers/OpenInput.c:34:13:door_motor_open	8	static
+../Core/Src/Handlers/OpenInput.c:39:13:valve_close	8	static
+../Core/Src/Handlers/OpenInput.c:46:13:read_loadcells	16	static
+../Core/Src/Handlers/OpenInput.c:66:13:build_header_payload	56	static
+../Core/Src/Handlers/OpenInput.c:85:6:DoorOpen_Measure	16	static

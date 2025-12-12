@@ -1,0 +1,139 @@
+
+
+//======================================================
+// OpenInput.c (Fixed & Clean Version)
+//======================================================
+
+#include "Inc/OpenInput.h"
+#include "Inc/handshake.h"
+#include "hx711.h"
+#include "main.h"
+#include <stdio.h>
+#include <string.h>
+#include <math.h>
+
+//======================================================
+// 외부 변수 (main.c 또는 global.c에서 정의)
+//======================================================
+extern HX711_t scale1;
+extern HX711_t scale2;
+
+extern char data_TransmitHeader[128];
+extern Msg_Header FUNCTION;
+
+//======================================================
+// LOG macro (없으면 printf로 대체 가능)
+//======================================================
+#ifndef LOG
+#define LOG(tag, msg) printf("%s %s\r\n", tag, msg)
+#endif
+
+//======================================================
+// 1) 모터/밸브 제어 함수 (static)
+//======================================================
+static void door_motor_open(void) {
+    HAL_GPIO_WritePin(Door_IN1_GPIO_Port, Door_IN1_Pin, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(Door_IN2_GPIO_Port, Door_IN2_Pin, GPIO_PIN_RESET);
+}
+
+static void valve_close(void) {
+    HAL_GPIO_WritePin(VALVE_GPIO_Port, VALVE_Pin, GPIO_PIN_SET);
+}
+
+//======================================================
+// 2) Loadcell 측정 함수 (static)
+//======================================================
+static bool read_loadcells(float *out1, float *out2) {
+    if (!out1 || !out2) return false;
+
+    HAL_GPIO_WritePin(DEVICE_GPIO_Port, DEVICE_Pin, GPIO_PIN_RESET);
+    HAL_Delay(500);   // HX711 안정화 (200~500ms)
+
+    *out1 = HX711_Get_Value(&scale1, 30, 2000);
+    *out2 = HX711_Get_Value(&scale2, 30, 2000);
+
+    if (*out1 < -100000 || *out2 < -100000) {
+        LOG("[ERR]", "HX711_FAIL");
+        return false;
+    }
+
+    return true;
+}
+
+//======================================================
+// 3) 결과 문자열 생성 (static)
+//======================================================
+static bool build_header_payload(char *out, size_t out_size,
+                                 float v1, float v2) {
+    if (!out || out_size == 0) return false;
+
+    int written = snprintf(out, out_size,
+        "{\"loadcell1\":%.2f,\"loadcell2\":%.2f}\r",
+        v1, v2);
+
+    if (written < 0 || (size_t)written >= out_size) {
+        LOG("[ERR]", "PAYLOAD_OVERFLOW");
+        return false;
+    }
+
+    return true;
+}
+
+//======================================================
+// 4) Open Door Processing (최종 사용 함수)
+//======================================================
+void DoorOpen_Measure(void) {
+    float lc1 = 0, lc2 = 0;
+
+    // 1) 모터/밸브 조작
+    door_motor_open();
+    valve_close();
+
+    // 2) Loadcell 읽기
+    if (!read_loadcells(&lc1, &lc2)) {
+        LOG("[ANS]", "FAIL");
+        FUNCTION = SPACE;
+        return;
+    }
+
+    // 3) Payload 생성
+    memset(data_TransmitHeader, 0, sizeof(data_TransmitHeader));
+    if (!build_header_payload(data_TransmitHeader,
+                              sizeof(data_TransmitHeader), lc1, lc2)) {
+        LOG("[ANS]", "PAYLOAD_ERROR");
+        FUNCTION = SPACE;
+        return;
+    }
+
+    LOG("[DEBUG]", data_TransmitHeader);
+
+    // 4) 완료 신호
+    LOG("[ANS]", "OK");
+    FUNCTION = SPACE;
+}
+
+
+
+//======================================================
+//                    LEGACY CODE
+//======================================================
+/*Control motor*/
+//HAL_GPIO_WritePin(Door_IN1_GPIO_Port, Door_IN1_Pin,
+//		GPIO_PIN_SET);
+//HAL_GPIO_WritePin(Door_IN2_GPIO_Port, Door_IN2_Pin,
+//		GPIO_PIN_RESET);
+///*Close valve*/
+//HAL_GPIO_WritePin(VALVE_GPIO_Port, VALVE_Pin, GPIO_PIN_SET);
+///*Transmit to header*/
+//
+//HAL_GPIO_WritePin(DEVICE_GPIO_Port, DEVICE_Pin, GPIO_PIN_RESET); // sensor ON
+//HAL_Delay(1500); // HX711 Stabilization (recommending 200~500ms)
+//
+//loadcell_1_open = HX711_Get_Value(&scale1, 30, 2000);
+//loadcell_2_open = HX711_Get_Value(&scale2, 30, 2000);
+//
+//LOG("[ANS]", "OK");
+//snprintf(data_TransmitHeader, sizeof(data_TransmitHeader),
+//		"loadcell_1_open = %f, loadcell_2_open = %f",
+//		loadcell_1_open, loadcell_2_open);
+//FUNCTION = SPACE;

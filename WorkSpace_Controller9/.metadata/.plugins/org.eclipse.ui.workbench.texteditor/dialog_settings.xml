@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<section name="Workbench">
+	<item key="hasShownOverlayPopupBefore" value="true"/>
+	<item key="replaceBarOpen" value="false"/>
+	<list key="searchhistory">
+		<item value="test_measure"/>
+		<item value="char i2c_check_buf[256];"/>
+		<item value="buf"/>
+		<item value="__HAL_RCC_I2C1_FORCE_RESET"/>
+		<item value="close_input"/>
+		<item value="RECHECK"/>
+		<item value="CHECK"/>
+		<item value="CLOSE_INPUT"/>
+		<item value="ULTRA"/>
+		<item value="i2c1"/>
+		<item value="CLOSE_IN"/>
+		<item value="SERIAL_BUFFER_SIZE"/>
+		<item value="rtc_al"/>
+		<item value="data_TransmitHeader"/>
+		<item value="flag_EXTI"/>
+	</list>
+</section>

@@ -1,0 +1,6 @@
+../Core/Src/Handlers/closeInput.c:20:13:motor_close	1
+../Core/Src/Handlers/closeInput.c:30:13:wait_liquid_separation_30s	1
+../Core/Src/Handlers/closeInput.c:39:13:i2c_scan_and_reset	6
+../Core/Src/Handlers/closeInput.c:68:13:read_all_sensors	10
+../Core/Src/Handlers/closeInput.c:124:13:build_closeinput_payload	3
+../Core/Src/Handlers/closeInput.c:134:6:DoorClose_Measure	2

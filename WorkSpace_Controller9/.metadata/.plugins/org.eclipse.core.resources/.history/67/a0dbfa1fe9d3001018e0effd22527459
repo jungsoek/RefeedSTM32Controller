@@ -1,0 +1,1599 @@
+/* USER CODE BEGIN Header */
+/**
+ ******************************************************************************
+ * @file           : main.c
+ * @brief          : Main program body
+ ******************************************************************************
+ * @attention
+ *
+ * Copyright (c) 2025 STMicroelectronics.
+ * All rights reserved.
+ *
+ * This software is licensed under terms that can be found in the LICENSE file
+ * in the root directory of this software component.
+ * If no LICENSE file comes with this software, it is provided AS-IS.
+ *
+ ******************************************************************************
+ */
+/* USER CODE END Header */
+/* Includes ------------------------------------------------------------------*/
+#include "main.h"
+
+/* Private includes ----------------------------------------------------------*/
+/* USER CODE BEGIN Includes */
+#include <stdlib.h>    // atof, srand
+#include <string.h>    // memset, memcpy, strstr, ...
+/* CDC set  up */
+//#include "usbd_cdc_if.h"
+/* USER CODE END Includes */
+
+/* Private typedef -----------------------------------------------------------*/
+/* USER CODE BEGIN PTD */
+/* USER CODE BEGIN PTD */
+
+/* ===== TEMP: SIM FAKE MODE (no real SIM card) ===== */
+#define SIM_FAKE_MODE   1
+
+#if SIM_FAKE_MODE
+
+// SIM 쪽 C 파일에 실제 정의가 있어야 함.
+extern uint8_t SIM_data[];
+
+// url / payload 보고 가짜 응답을 SIM_data 에 넣어주는 함수
+static void SIM_FakeFillResponse(const char *payload, const char *url) {
+	// 1) identity → 로그인/드라이버 체크
+	if (strstr(url, "identity")) {
+		/*
+		 * 여기서 payload 안에 phoneNumber 보고
+		 * 특정 번호는 driver:true, 나머지는 driver:false
+		 * 이렇게 나누고 싶으면 조건 더 넣으면 됨.
+		 *
+		 * 기본은 일반 유저: driver:false
+		 */
+		strcpy((char*) SIM_data, "{\"driver\":false}");
+	}
+	// 2) postcontainer / postuco 등 나머지 → true 응답
+	else {
+		strcpy((char*) SIM_data, "true");
+	}
+}
+
+// SIM_Wakeup: 항상 성공
+#define SIM_Wakeup(timeout_ms)   (0)
+
+// SIM_Sleep: 그냥 HAL_Delay
+#define SIM_Sleep(delay_ms)      HAL_Delay(delay_ms)
+
+// SIMCom_Post: 실제 통신 안 하고 가짜 응답 넣고 "성공" 리턴
+// main.c 에서는 if (!SIMCom_Post(...)) 형식이므로 0 이 성공이어야 함
+#define SIMCom_Post(payload, url, timeout_ms) \
+	( SIM_FakeFillResponse(payload, url), 0 )
+
+#endif
+/* ===== END SIM FAKE MODE ===== */
+
+// Receive buffer
+RTC_AlarmTypeDef sAlarm = { 0 };
+RTC_TimeTypeDef sTime = { 0 };
+
+uint8_t LOG_buffer[UART_RX_BUFFER_SIZE];
+uint8_t Rx_Buff[UART_RX_BUFFER_SIZE]; // 실제 수신 버퍼
+volatile uint8_t Data_Received_Flag = 0; // 플래그 정의
+
+/* USER CODE END PV */
+
+// Sending buffer
+char log_msg[UART_RX_BUFFER_SIZE];
+volatile bool LOG_DataValid = false;
+
+//Wake up
+volatile bool EXTI_Wakeup = false;
+volatile bool Alarm_Wakeup = false;
+volatile bool flag_EXTI = false;
+//POST PhoneNum
+char PhoneNum[20];
+
+//Data SIM, id
+const char ID[] = "testmachine";
+const char countryDialCode[] = "+84";
+const char url_postper[] = "https://api.admin.bi-oil.app/postcontainer";
+const char url_identity[] = "https://api.admin.bi-oil.app/identity";
+const char url_postuco[] = "https://api.admin.bi-oil.app/postuco";
+static char data_PostSimCom[150];
+
+//Data herder
+char data_TransmitHeader[100];
+
+//Value water and oil
+float volume_water; //(Liter)
+float volume_oil;   //(Liter)
+
+//Volume on container and battery
+float value_VolContainer; // (%)
+float value_Voltage;	  // (V)
+
+float distance_Tof = -1.0f;
+float value_LoadCell_open = -1.0f;
+float value_LoadCell_close = -1.0f;
+float value_LoadCell_real = -1.0f;
+
+float water_weight = -1.0f;
+float ws_height = -1.0f;
+float oil_weight = -1.0f;
+float watersensor_value = -1.0f;
+float volume_total = -1.0f;
+
+float lc_mass_zero = -1.0f;
+float lc_mass_real = -1.0f;
+float lc_mass = -1.0f;
+
+float loadcell_1 = -1.0f;
+float loadcell_1_testmeasure = -1.0f;
+float loadcell_1_handshake = -1.0f;
+
+float loadcell_2 = -1.0f;
+float loadcell_2_testmeasure = -1.0f;
+float loadcell_2_handshake = -1.0f;
+
+float loadcell_sum = -0.1f;
+
+float loadcell_1_door = -1.0f;
+float loadcell_1_open = -1.0f;
+float loadcell_1_close = -1.0f;
+
+float loadcell_2_door = -1.0f;
+float loadcell_2_open = -1.0f;
+float loadcell_2_close = -1.0f;
+
+float ultra = -1.0f;
+
+//float volume_WS = -1.0f;
+/////
+char data_Ok[] = "OK";
+char data_Fail[] = "FAIL";
+char data_Oil_Water[] = "O1.23W4.56E";
+const char *data_Post = "{\"volume\": 123,\"battery\": 456}";
+
+typedef enum {
+	HANDSHAKE,
+	VALIDATION,
+	POST_UCO,
+	POST_PER,
+	OPEN_INPUT,
+	CLOSE_INPUT,
+	RECHECK,
+	UNLOCK_DOOR,
+	SLEEP,
+	ALARM_WAKEUP,
+	EXTI_WAKEUP,
+	OPEN_VALVE,
+	CLOSE_VALVE,
+	TURN_OFF,
+	TEST_PERCENT,
+	TEST_MEASURE,
+	TEST_SDCLOSE,
+	TEST_SDOPEN,
+	SPACE,
+	SETTING
+} Msg_Header;
+
+typedef enum {
+	ERR_SIMCOM, ERR_ULTRA, ERR_TOF, ERR_LOADCELL
+} Err_Device;
+
+Msg_Header FUNCTION;
+
+//typedef enum {
+//	IDLE,			// Run without doing anything and not sleep
+//	INIT,			// Initiate peripheral and handshake
+//	VALID,			// Check if user is valid or not QR and NUM input, Update number or QR, machine id to the server
+//	OPENS,			// Open small door
+//	POSTPER,		// Update the container percentage
+//	CLOSES,			// Close the door and start the measuring process
+//	POSTDATA,		// Update the user id, input amount and machine if to the server
+//	SLEEP,			// Sleep allowance and go to sleep
+//	ALARM,			// Display update and stop user from using machine
+//} command;
+
+/* USER CODE END PTD */
+
+/* Private define ------------------------------------------------------------*/
+/* USER CODE BEGIN PD */
+
+/* USER CODE END PD */
+
+/* Private macro -------------------------------------------------------------*/
+/* USER CODE BEGIN PM */
+
+/* USER CODE END PM */
+
+/* Private variables ---------------------------------------------------------*/
+ADC_HandleTypeDef hadc1;
+ADC_HandleTypeDef hadc2;
+
+I2C_HandleTypeDef hi2c1;
+
+RTC_HandleTypeDef hrtc;
+
+TIM_HandleTypeDef htim1;
+
+UART_HandleTypeDef huart1;
+UART_HandleTypeDef huart2;
+
+/* USER CODE BEGIN PV */
+
+/* USER CODE END PV */
+
+/* Private function prototypes -----------------------------------------------*/
+void SystemClock_Config(void);
+static void MX_GPIO_Init(void);
+static void MX_I2C1_Init(void);
+static void MX_USART1_UART_Init(void);
+static void MX_USART2_UART_Init(void);
+static void MX_TIM1_Init(void);
+static void MX_ADC1_Init(void);
+static void MX_ADC2_Init(void);
+static void MX_RTC_Init(void);
+/* USER CODE BEGIN PFP */
+
+/* USER CODE END PFP */
+
+/* Private user code ---------------------------------------------------------*/
+/* USER CODE BEGIN 0 */
+void CheckHeader(void) {
+	//echo response for ack
+	LOG("[ANS]", "ACK");
+//	  LOG("[DEBUG]", (char*)LOG_buffer);
+	FUNCTION = SPACE;
+
+	if (strstr((char*) LOG_buffer, "[CMD]HANDSHAKE")) {
+		FUNCTION = HANDSHAKE;
+	} else if (strstr((char*) LOG_buffer, "[VALID]")
+			&& strstr((char*) LOG_buffer, "ENDSTR")) {
+		FUNCTION = VALIDATION;
+	} else if (strstr((char*) LOG_buffer, "[CMD]OPENS")) {
+		FUNCTION = OPEN_INPUT;
+	} else if (strstr((char*) LOG_buffer, "[CMD]CLOSES")) {
+		FUNCTION = CLOSE_INPUT;
+	} else if (strstr((char*) LOG_buffer, "[CMD]RECHECK")) {
+		FUNCTION = RECHECK;
+	} else if (strstr((char*) LOG_buffer, "[CMD]POSTPER")) {
+		FUNCTION = POST_PER;
+	} else if (strstr((char*) LOG_buffer, "[CMD]POSTDATA")) {
+		FUNCTION = POST_UCO;
+	} else if (strstr((char*) LOG_buffer, "[CMD]OPENB")) {
+		FUNCTION = UNLOCK_DOOR;
+	} else if (strstr((char*) LOG_buffer, "[CMD]SLEEP")) {
+		FUNCTION = SLEEP;
+	} else if (strstr((char*) LOG_buffer, "[CMD]CLOSEV")) {
+		FUNCTION = CLOSE_VALVE;
+	} else if (strstr((char*) LOG_buffer, "[CMD]OPENV")) {
+		FUNCTION = OPEN_VALVE;
+	} else if (strstr((char*) LOG_buffer, "[CMD]OFF")) {
+		FUNCTION = TURN_OFF;
+	}	  ////////////////////////////////////////////////////////
+	else if (strstr((char*) LOG_buffer, "[TEST]PERCENT")) {
+		FUNCTION = TEST_PERCENT;
+	} else if (strstr((char*) LOG_buffer, "[TEST]MEASURE")) {
+		FUNCTION = TEST_MEASURE;
+	} else if (strstr((char*) LOG_buffer, "[TEST]SDCLOSE")) {
+		FUNCTION = TEST_SDCLOSE;
+	} else if (strstr((char*) LOG_buffer, "[TEST]SDOPEN")) {
+		FUNCTION = TEST_SDOPEN;
+	} else if (strstr((char*) LOG_buffer, "[CMD]SETTING")) {
+		FUNCTION = SETTING;
+	}
+}
+
+HAL_StatusTypeDef LOG(const char *header, const char *cmd) {
+	memset(log_msg, '\0', UART_RX_BUFFER_SIZE);
+	strcpy(log_msg, header);
+	strcat(log_msg, cmd);
+	strcat(log_msg, "#");
+	HAL_UART_Transmit(&huart1, (uint8_t*) log_msg, strlen(log_msg), 50);
+	// CDC_Transmit_FS((uint8_t *)log_msg, strlen(log_msg));
+	return HAL_OK;
+}
+
+float VolumeTotal(float h) {
+	float R = 12.5;
+	float r = 2.0;
+	float H_cone = 8.0;
+	float H_cylinder = 8.0;
+	float H_total = H_cone + H_cylinder;
+
+	if (h < 0 || h > H_total) {
+		return -1.0;
+	}
+	if (h <= H_cone) {
+		float r_h = r + ((R - r) / H_cone) * h;
+		return (1.0 / 3.0) * 3.14 * h * (r_h * r_h + r_h * r + r * r);
+
+	} else {
+		float V_cone_full = (1.0 / 3.0) * 3.14 * H_cone
+				* (R * R + R * r + r * r);
+		float h_cylinder_part = h - H_cone;
+		float V_cylinder_part = 3.14 * R * R * h_cylinder_part;
+		return (V_cone_full + V_cylinder_part) / 1000; //liter unit
+	}
+}
+/* USER CODE END 0 */
+
+/**
+ * @brief  The application entry point.
+ * @retval int
+ */
+int main(void) {
+
+	/* USER CODE BEGIN 1 */
+
+	/* USER CODE END 1 */
+
+	/* MCU Configuration--------------------------------------------------------*/
+
+	/* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+	HAL_Init();
+
+	/* USER CODE BEGIN Init */
+
+	/* USER CODE END Init */
+
+	/* Configure the system clock */
+	SystemClock_Config();
+
+	/* USER CODE BEGIN SysInit */
+
+	/* USER CODE END SysInit */
+
+	/* Initialize all configured peripherals */
+	MX_GPIO_Init();
+	MX_I2C1_Init();
+	MX_USART1_UART_Init();
+	MX_USART2_UART_Init();
+	MX_TIM1_Init();
+	MX_ADC1_Init();
+	MX_ADC2_Init();
+	MX_RTC_Init();
+	/* USER CODE BEGIN 2 */
+	HAL_UARTEx_ReceiveToIdle_IT(&huart1, LOG_buffer, UART_RX_BUFFER_SIZE);
+	HAL_UARTEx_ReceiveToIdle_IT(&huart2, SIM_buffer, UART_RX_BUFFER_SIZE);
+	WATER_InitDefault(&hi2c1);     // Water sensor driver init
+	//TOF SENSOR
+	statInfo_t_VL53L0X distanceStr;
+	initVL53L0X(1, &hi2c1);
+	uint16_t offset_DistanceTof = VL53L0X_OFFSET(&distanceStr);
+
+	//Ultrasonic
+	HAL_TIM_Base_Start(&htim1);
+
+	srand(HAL_GetTick()); // For random value in WATERSENSOR.c
+
+	// Load cellHA
+	HX711_t scale1;
+	HX711_t scale2;
+	float calibration_factor = 200.0f;
+
+	//Voltage
+	HAL_ADC_Start(&hadc1);
+	HAL_ADC_Start(&hadc2);
+
+	//Setup
+	FUNCTION = SPACE;
+	HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET); //Turn on led
+	HAL_GPIO_WritePin(DEVICE_GPIO_Port, DEVICE_Pin, GPIO_PIN_SET);
+	LOG("[DEBUG]", "STM32 OK!");
+	SIM_Sleep(3000);
+	/* USER CODE END 2 */
+
+	/* Infinite loop */
+	/* USER CODE BEGIN WHILE */
+	while (1) {
+		/* USER CODE END WHILE */
+		HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
+		HAL_Delay(500); // Delay 0.5sec
+		/* USER CODE BEGIN 3 */
+		if (LOG_DataValid) {
+			if (EXTI_Wakeup) {
+				FUNCTION = EXTI_WAKEUP;
+				EXTI_Wakeup = false;      // Flag clear
+			} else if (Alarm_Wakeup) {
+				FUNCTION = ALARM_WAKEUP;
+				Alarm_Wakeup = false;     // Flag clear
+			} else {
+				CheckHeader(); // Configuration FUNCTION as HANDSHAKE, OPENS by the LOG_buffer.
+
+			}
+			/* Change the stage when command come in */
+			switch (FUNCTION) {
+			case HANDSHAKE:
+				//for defbug and fail device checking
+				uint16_t error_code = 0;
+				char error_code_char[10];
+				for (int i = 0; i < 10; i++) {
+					HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
+					HAL_Delay(100); // 0.5초 지연
+				}
+				HAL_GPIO_WritePin(DEVICE_GPIO_Port, DEVICE_Pin, GPIO_PIN_RESET); //Turn on sensor
+				initVL53L0X(1, &hi2c1);
+				HX711_Init(&scale1, LC_Data1_GPIO_Port, LC_Data1_Pin,
+				LC_SCK_GPIO_Port, LC_SCK_Pin, calibration_factor);
+				HX711_Init(&scale2, LC_Data2_GPIO_Port, LC_Data2_Pin,
+				LC_SCK_GPIO_Port, LC_SCK_Pin, calibration_factor);
+
+				char buf[256];
+				snprintf(buf, sizeof(buf), "I2C Device Found: 0x%02X\r\n", addr);
+				for (uint16_t addr = 1; addr < 128; addr++) {
+					if (HAL_I2C_IsDeviceReady(&hi2c1,
+							(uint16_t) (addr7 << 1), 1, 5) == HAL_OK) {
+						LOG("%s", buf);  // 여기서 buf 그대로 출력
+					} else if (HAL_I2C_IsDeviceReady(&hi2c1,
+							(uint16_t) (addr7 << 1), 1, 5) == HAL_ERROR) {
+						LOG("[ANS] HAL_ERROR\r\n");
+					} else if (HAL_I2C_IsDeviceReady(&hi2c1,
+							(uint16_t) (addr7 << 1), 1, 5) == HAL_BUSY) {
+						LOG("[ANS] HAL_BUSY\r\n");
+					} else if (HAL_I2C_IsDeviceReady(&hi2c1,
+							(uint16_t) (addr7 << 1), 1, 5) == HAL_TIMEOUT) {
+						LOG("[ANS] HAL_TIMEOUT\r\n");
+					} else {
+						LOG("[ANS] ANOTHER_ERROR\r\n");
+					}
+				}
+
+				if (VL53L0X_ReadDistance(&distanceStr, offset_DistanceTof)
+						== -1.0f) {
+					LOG("[ANS]", "DIST_FAIL");
+				} else {
+					LOG("[ANS]", "DIST_SUCC");
+				}
+
+				if (HX711_Get_Value(&scale1, 30, 2000) == -1.0f) {
+					LOG("[ANS]", "LC1_FAIL");
+				} else {
+					LOG("[ANS]", "LC1_SUCC");
+				}
+
+				if (HX711_Get_Value(&scale2, 30, 2000) == -1.0f) {
+					LOG("[ANS]", "LC2_FAIL");
+				} else {
+					LOG("[ANS]", "LC2_SUCC");
+				}
+
+				if (WATER_ReadLastOn_Quick(200) == -1.0f) {
+					LOG("[ANS]", "WS_FAIL");
+				} else {
+					LOG("[ANS]", "WS_SUCC");
+				}
+
+				if (SIM_Wakeup(800) != 0) {
+					error_code += 1;
+				}
+				if (VL53L0X_OFFSET(&distanceStr) == -1.0f) {
+					error_code += 10;
+				}
+
+				ultra = Ultra_ReadDistance();
+
+				if (ultra == -1.0f) {
+					error_code += 100;
+				}
+				if ((ultra <= 20.0) && (ultra >= 0)) {
+					LOG("[ANS]", "FULL");
+				}
+				if ((HX711_Tare(&scale1, 10, 500) == -1.0f)
+						|| (HX711_Tare(&scale2, 10, 500) == -1.0f)) {
+					error_code += 1000;
+				}
+				if (error_code == 0) {
+					LOG("[ANS]", "OK");
+				} else {
+					snprintf(error_code_char, sizeof(error_code_char), "%d",
+							error_code);
+
+					LOG("[ANS]", "FAIL");
+					LOG("[DEBUG]", error_code_char);
+					error_code = 0;
+				}
+				HAL_Delay(500);
+
+				loadcell_1_handshake = HX711_Get_Value(&scale1, 10, 2000);
+				loadcell_2_handshake = HX711_Get_Value(&scale2, 10, 2000);
+
+				SIM_Sleep(300);
+				FUNCTION = SPACE;
+				break;
+
+			case VALIDATION:
+
+				// 1) Initializing phone number buffer
+				memset(PhoneNum, '\0', sizeof(PhoneNum));
+				memset(data_PostSimCom, '\0', sizeof(data_PostSimCom)); // end of 1) Initializing phone number buffer
+
+				// 2) Parsing phone number from among [VALID] to ENDSTR
+				{
+					char *start_PhoneNum = strstr((char*) LOG_buffer,
+							"[VALID]");
+					char *end_PhoneNum = strstr((char*) LOG_buffer, "ENDSTR");
+
+					if (start_PhoneNum != NULL && end_PhoneNum != NULL
+							&& end_PhoneNum > start_PhoneNum) {
+						start_PhoneNum += 7; // Jumping interval as "[VALID]"'s length.
+
+						size_t len = end_PhoneNum - start_PhoneNum;
+						if (len >= sizeof(PhoneNum)) {
+							len = sizeof(PhoneNum) - 1;
+						}
+						memcpy(PhoneNum, start_PhoneNum, len);
+						PhoneNum[len] = '\0';
+
+						// Print debug log to check the PhoneNum.
+						LOG("[DEBUG]", PhoneNum);
+					} else {
+						LOG("[DEBUG]", "PhoneNum parse error");
+					}
+				}
+
+				// 3) Generate the JSON paload that send to server.
+				snprintf(data_PostSimCom, sizeof(data_PostSimCom),
+						"{\"phoneNumber\":\"%s\",\"countryDialCode\":\"%s\",\"machineId\":\"%s\"}\r",
+						PhoneNum, countryDialCode, ID);
+
+				// 4) SIM Communication (It is FAKE SIM. So it isn't sent to server.)
+				if (SIM_Wakeup(3000)) {
+					LOG("[ANS]", "FAIL");
+				}
+
+				if (!SIMCom_Post(data_PostSimCom, url_identity, 5000)) {
+					// LOG("[DEBUG]", (char*)SIM_data); // If you need check this LOG, Uncomment and check the log.
+
+					/* User case */
+					// Allowing the normal users. (driver:false)
+					if (strstr((char*) SIM_data, "\"driver\":false")) {
+						LOG("[ANS]", "OK");
+					}
+					// unsign in users
+					else if (strstr((char*) SIM_data,
+							"\"message\":\"no user found\"")) {
+						LOG("[ANS]", "REJECT");
+					}
+					/* Driver case */
+					// Driver permission allowed.
+					else if (strstr((char*) SIM_data, "\"driver\":true")) {
+						LOG("[ANS]", "DRIVER:TRUE");
+					}
+					// Driver permission denied
+					else if (strstr((char*) SIM_data,
+							"\"message\":\"not permitted\"")) {
+						LOG("[ANS]", "DRIVER:FALSE");
+					}
+					// etc...
+					else {
+						LOG("[ANS]", "FAIL");
+					}
+				} else {
+					LOG("[ANS]", "FAIL");
+				}
+
+				SIM_Sleep(3000);
+				FUNCTION = SPACE;
+				break;
+
+			case POST_UCO:
+				memset(data_PostSimCom, '\0', sizeof(data_PostSimCom));
+				//prepare data
+				snprintf(data_PostSimCom, sizeof(data_PostSimCom),
+						"{\"phoneNumber\": \"%s\", \"countryDialCode\": \"%s\", \"machineId\": \"%s\", \"oil\": %.2f, \"water\": %.2f}\r",
+						PhoneNum, countryDialCode, ID, oil_weight,
+						water_weight);
+				// LOG("DEBUG", data_PostSimCom);
+				//SIM_post
+				if (SIM_Wakeup(3000)) {
+					LOG("[ANS]", "FAIL");
+				}
+				if (!SIMCom_Post(data_PostSimCom, url_postuco, 5000)) {
+					if (strstr((char*) SIM_data, "true")) {
+						LOG("[ANS]", "OK");
+					} else if (strstr((char*) SIM_data, "false")) {
+						LOG("[ANS]", "REJECT");
+					} else {
+						LOG("[ANS]", "UNDEFINE");
+					}
+				} else {
+					LOG("[ANS]", "FAIL");
+				}
+				SIM_Sleep(3000);
+				FUNCTION = SPACE;
+				break;
+			case POST_PER:
+				memset(data_PostSimCom, '\0', sizeof(data_PostSimCom));
+				//Prepare data
+				value_VolContainer = Ultra_ReadDistance();
+				value_Voltage = Read_Voltage();
+				//Prepare data
+				snprintf(data_PostSimCom, sizeof(data_PostSimCom),
+						"{\"machineId\": \"%s\", \"volume\": %.2f, \"battery\": %.2f}\r",
+						ID, value_VolContainer, value_Voltage);
+				// LOG("DEBUG", data_PostSimCom);
+				//SIM_post
+				if (SIM_Wakeup(3000)) {
+					LOG("[ANS]", "FAIL");
+				}
+				if (!SIMCom_Post(data_PostSimCom, url_postper, 5000)) {
+					if (strstr((char*) SIM_data, "true")) {
+						LOG("[ANS]", "OK");
+					} else if (strstr((char*) SIM_data, "false")) {
+						LOG("[ANS]", "REJECT");
+					} else {
+						LOG("[ANS]", "UNDEFINE");
+					}
+				} else {
+					LOG("[ANS]", "FAIL");
+				}
+				SIM_Sleep(3000);
+				FUNCTION = SPACE;
+				break;
+
+			case OPEN_INPUT:
+				/*Control motor*/
+				HAL_GPIO_WritePin(Door_IN1_GPIO_Port, Door_IN1_Pin,
+						GPIO_PIN_SET);
+				HAL_GPIO_WritePin(Door_IN2_GPIO_Port, Door_IN2_Pin,
+						GPIO_PIN_RESET);
+				/*Close valve*/
+				HAL_GPIO_WritePin(VALVE_GPIO_Port, VALVE_Pin, GPIO_PIN_SET);
+				/*Transmit to header*/
+
+				HAL_GPIO_WritePin(DEVICE_GPIO_Port, DEVICE_Pin, GPIO_PIN_RESET); // sensor ON
+				HAL_Delay(1500); // HX711 Stabilization (recommending 200~500ms)
+
+				loadcell_1_open = HX711_Get_Value(&scale1, 30, 2000);
+				loadcell_2_open = HX711_Get_Value(&scale2, 30, 2000);
+
+				LOG("[ANS]", "OK");
+				snprintf(data_TransmitHeader, sizeof(data_TransmitHeader),
+						"loadcell_1_open = %f, loadcell_2_open = %f",
+						loadcell_1_open, loadcell_2_open);
+				FUNCTION = SPACE;
+				break;
+			case CLOSE_INPUT:
+				/*Control motor*/
+				HAL_GPIO_WritePin(Door_IN1_GPIO_Port, Door_IN1_Pin,
+						GPIO_PIN_RESET);
+				HAL_GPIO_WritePin(Door_IN2_GPIO_Port, Door_IN2_Pin,
+						GPIO_PIN_SET);
+
+				HAL_Delay(30000);
+
+				/*Take value from sensor*/
+				// load cell and tof sensor
+				if (VL53L0X_ReadDistance(&distanceStr, offset_DistanceTof)
+						== -1.0f) {
+					LOG("[ANS]", "DIST_FAIL");
+				} else {
+					LOG("[ANS]", "DIST_SUCC");
+				}
+
+				if (HX711_Get_Value(&scale1, 30, 2000) == -1.0f) {
+					LOG("[ANS]", "LC1_FAIL");
+				} else {
+					LOG("[ANS]", "LC1_SUCC");
+				}
+
+				if (HX711_Get_Value(&scale2, 30, 2000) == -1.0f) {
+					LOG("[ANS]", "LC2_FAIL");
+				} else {
+					LOG("[ANS]", "LC2_SUCC");
+				}
+
+				if (WATER_ReadLastOn_Quick(200) == -1.0f) {
+					LOG("[ANS]", "WS_FAIL");
+				} else {
+					LOG("[ANS]", "WS_SUCC");
+				}
+
+				distance_Tof = VL53L0X_ReadDistance(&distanceStr,
+						offset_DistanceTof); //(mm)
+
+				loadcell_1_close = HX711_Get_Value(&scale1, 30, 2000);
+				loadcell_2_close = HX711_Get_Value(&scale2, 30, 2000);
+
+				loadcell_1_door = loadcell_1_close - loadcell_1_open;
+				loadcell_2_door = loadcell_2_close - loadcell_2_open;
+
+				if (fabsf(loadcell_1_door) < 5.0f)
+					loadcell_1_door = 0.0f;
+				if (fabsf(loadcell_2_door) < 5.0f)
+					loadcell_2_door = 0.0f;
+
+				loadcell_sum = loadcell_1_door + loadcell_2_door;
+
+				// Total mass using interpolation table HX711 (LC1 + LC2)
+				lc_mass = HX711_InterpFromTable(loadcell_sum);   // g 단위
+
+				watersensor_value = WATER_ReadHeightMM(220);   //(mm)
+				water_weight = WATER_ReadLastOn_Quick(220);     //last_on index
+
+				/*Turn off the sensor*/
+				HAL_GPIO_WritePin(DEVICE_GPIO_Port, DEVICE_Pin, GPIO_PIN_SET);
+
+				//Transmit to header
+				oil_weight = lc_mass - water_weight;
+				if (oil_weight < 0.0f)
+					oil_weight = 0.0f;
+
+				memset(data_TransmitHeader, '\0', sizeof(data_TransmitHeader));
+				snprintf(data_TransmitHeader, 40, "O%.2fW%.2fE", oil_weight,
+						water_weight);
+				LOG("[ANS]", data_TransmitHeader);
+
+				// (1) HX711 Original value
+				snprintf(data_TransmitHeader, sizeof(data_TransmitHeader),
+						"Distance=%.2f mm, LC1_raw=%.2f, LC2_raw=%.2f;",
+						distance_Tof, loadcell_1_door, loadcell_2_door);
+				LOG("[ANS]", data_TransmitHeader);
+				// (1) HX711 Original value
+				snprintf(data_TransmitHeader, sizeof(data_TransmitHeader),
+						"lc1_open=%.2f g, lc2_open=%.2f g, lc1_close=%.2f g, lc2_close=%.2f g;",
+						loadcell_1_open, loadcell_2_open, loadcell_1_close,
+						loadcell_2_close);
+				LOG("[ANS]", data_TransmitHeader);
+				// (2) Total mass that brought by interpolation table vs Water weight that sensed by water sensor.
+				snprintf(data_TransmitHeader, sizeof(data_TransmitHeader),
+						"LC_mass=%.1f g, WS_mass=%.1f g, Oil_mass=%.1f g;",
+						lc_mass, water_weight, oil_weight);
+				LOG("[ANS]", data_TransmitHeader);
+
+				FUNCTION = SPACE;
+				break;
+
+			case RECHECK:
+
+				/*Take value from sensor*/
+				// load cell and tof sensor
+				if (VL53L0X_ReadDistance(&distanceStr, offset_DistanceTof)
+						== -1.0f) {
+					LOG("[ANS]", "DIST_FAIL");
+				} else {
+					LOG("[ANS]", "DIST_SUCC");
+				}
+
+				if (HX711_Get_Value(&scale1, 30, 2000) == -1.0f) {
+					LOG("[ANS]", "LC1_FAIL");
+				} else {
+					LOG("[ANS]", "LC1_SUCC");
+				}
+
+				if (HX711_Get_Value(&scale2, 30, 2000) == -1.0f) {
+					LOG("[ANS]", "LC2_FAIL");
+				} else {
+					LOG("[ANS]", "LC2_SUCC");
+				}
+
+				if (WATER_ReadLastOn_Quick(200) == -1.0f) {
+					LOG("[ANS]", "WS_FAIL");
+				} else {
+					LOG("[ANS]", "WS_SUCC");
+				}
+
+				distance_Tof = VL53L0X_ReadDistance(&distanceStr,
+						offset_DistanceTof); //(mm)
+
+				loadcell_1_close = HX711_Get_Value(&scale1, 30, 2000);
+				loadcell_2_close = HX711_Get_Value(&scale2, 30, 2000);
+
+				loadcell_1_door = loadcell_1_close - loadcell_1_open;
+				loadcell_2_door = loadcell_2_close - loadcell_2_open;
+
+				if (fabsf(loadcell_1_door) < 5.0f)
+					loadcell_1_door = 0.0f;
+				if (fabsf(loadcell_2_door) < 5.0f)
+					loadcell_2_door = 0.0f;
+
+				loadcell_sum = loadcell_1_door + loadcell_2_door;
+
+				// Total mass using interpolation table HX711 (LC1 + LC2)
+				lc_mass = HX711_InterpFromTable(loadcell_sum);   // g 단위
+
+				watersensor_value = WATER_ReadHeightMM(220);   //(mm)
+				water_weight = WATER_ReadLastOn_Quick(220);     //last_on index
+
+				/*Turn off the sensor*/
+				HAL_GPIO_WritePin(DEVICE_GPIO_Port, DEVICE_Pin, GPIO_PIN_SET);
+
+				//Transmit to header
+				oil_weight = lc_mass - water_weight;
+				if (oil_weight < 0.0f)
+					oil_weight = 0.0f;
+
+				memset(data_TransmitHeader, '\0', sizeof(data_TransmitHeader));
+				snprintf(data_TransmitHeader, 40, "O%.2fW%.2fE", oil_weight,
+						water_weight);
+				LOG("[ANS]", data_TransmitHeader);
+
+				// (1) HX711 Original value
+				snprintf(data_TransmitHeader, sizeof(data_TransmitHeader),
+						"Distance=%.2f mm, LC1_raw=%.2f, LC2_raw=%.2f;",
+						distance_Tof, loadcell_1_door, loadcell_2_door);
+				LOG("[ANS]", data_TransmitHeader);
+				// (1) HX711 Original value
+				snprintf(data_TransmitHeader, sizeof(data_TransmitHeader),
+						"lc1_open=%.2f g, lc2_open=%.2f g, lc1_close=%.2f g, lc2_close=%.2f g;",
+						loadcell_1_open, loadcell_2_open, loadcell_1_close,
+						loadcell_2_close);
+				LOG("[ANS]", data_TransmitHeader);
+				// (2) Total mass that brought by interpolation table vs Water weight that sensed by water sensor.
+				snprintf(data_TransmitHeader, sizeof(data_TransmitHeader),
+						"LC_mass=%.1f g, WS_mass=%.1f g, Oil_mass=%.1f g;",
+						lc_mass, water_weight, oil_weight);
+				LOG("[ANS]", data_TransmitHeader);
+
+				FUNCTION = SPACE;
+				break;
+			case UNLOCK_DOOR:
+				/* unlock big door for driver */
+				HAL_GPIO_WritePin(LOCK_GPIO_Port, LOCK_Pin, GPIO_PIN_SET);
+				HAL_Delay(500);
+				HAL_GPIO_WritePin(LOCK_GPIO_Port, LOCK_Pin, GPIO_PIN_RESET);
+				/*Transmit to header*/
+				LOG("[ANS]", "OK");
+				FUNCTION = SPACE;
+				break;
+			case SLEEP:
+				//Turn off device
+				HAL_GPIO_WritePin(DEVICE_GPIO_Port, DEVICE_Pin, GPIO_PIN_SET); //Turn off sensor source
+				HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET); //Turn off the led
+				HAL_ADC_DeInit(&hadc1);
+				HAL_ADC_DeInit(&hadc2);
+
+				HAL_GPIO_DeInit(LOCK_GPIO_Port, LOCK_Pin);
+				HAL_GPIO_DeInit(VALVE_GPIO_Port, VALVE_Pin);
+				HAL_GPIO_DeInit(DAEGUN_LOAD_GPIO_Port, DAEGUN_LOAD_Pin);
+				//HAL_GPIO_DeInit(DEVICE_GPIO_Port, DEVICE_Pin);
+				HAL_GPIO_DeInit(LED_GPIO_Port, LED_Pin);
+				HAL_GPIO_DeInit(Door_IN1_GPIO_Port, Door_IN1_Pin);
+				HAL_GPIO_DeInit(Door_IN2_GPIO_Port, Door_IN2_Pin);
+				HAL_GPIO_DeInit(U_Trig_GPIO_Port, U_Trig_Pin);
+				HAL_GPIO_DeInit(U_Echo_GPIO_Port, U_Echo_Pin);
+				HAL_GPIO_DeInit(LC_SCK_GPIO_Port, LC_SCK_Pin);
+				HAL_GPIO_DeInit(LC_Data1_GPIO_Port, LC_Data1_Pin);
+				HAL_GPIO_DeInit(LC_Data2_GPIO_Port, LC_Data2_Pin);
+				HAL_I2C_DeInit(&hi2c1);
+				//Transmit to header
+				flag_EXTI = true;
+				LOG("[ANS]", "STM_SLEEP");
+				//Sleep
+				HAL_SuspendTick();
+				HAL_PWR_EnterSTOPMode(PWR_LOWPOWERREGULATOR_ON,
+				PWR_STOPENTRY_WFI);
+				/* NEXT WAKEUP START HERE */
+				HAL_ResumeTick();
+				/* Start up peripheral device */
+				SystemClock_Config();
+				MX_USART1_UART_Init();
+				MX_USART2_UART_Init();
+				/* Start uart receive end */
+				HAL_UARTEx_ReceiveToIdle_IT(&huart1, LOG_buffer,
+				UART_RX_BUFFER_SIZE);
+				HAL_UARTEx_ReceiveToIdle_IT(&huart2, SIM_buffer,
+				UART_RX_BUFFER_SIZE);
+				/* Start up communication protocol */
+				MX_ADC1_Init();
+				MX_ADC2_Init();
+				MX_GPIO_Init();
+				MX_I2C1_Init();
+				/* Disable wake up flag */
+				flag_EXTI = false;
+				LOG("[ANS]", "STM_WAKE_UP");
+				HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET); //Turn on the led
+				break;
+			case ALARM_WAKEUP:
+				uint16_t error_code1 = 0;
+				LOG("[CMD]", "UPDATE");
+				HAL_GPIO_WritePin(DEVICE_GPIO_Port, DEVICE_Pin, GPIO_PIN_RESET); //Turn on sensor
+
+				initVL53L0X(1, &hi2c1);
+				HX711_Init(&scale1, LC_Data1_GPIO_Port, LC_Data1_Pin,
+				LC_SCK_GPIO_Port, LC_SCK_Pin, calibration_factor);
+				HX711_Init(&scale2, LC_Data2_GPIO_Port, LC_Data2_Pin,
+				LC_SCK_GPIO_Port, LC_SCK_Pin, calibration_factor);
+
+				if (SIM_Wakeup(3000) != 0) {
+					error_code1 += 1;
+				}
+				if (VL53L0X_OFFSET(&distanceStr) == -1.0f) {
+					error_code1 += 10;
+				}
+				if (Ultra_ReadDistance() == -1.0f) {
+					error_code1 += 100;
+				}
+				if ((HX711_Tare(&scale1, 10, 2000) == -1.0f)
+						|| (HX711_Tare(&scale2, 10, 2000) == -1.0f)) {
+					error_code1 += 1000;
+				}
+				//Prepare data
+				value_VolContainer = Ultra_ReadDistance();
+				value_Voltage = Read_Voltage();
+				//Prepare data
+				snprintf(data_PostSimCom, sizeof(data_PostSimCom),
+						"{\"machineId\": \"%s\", \"volume\": %.2f, \"battery\": %.2f}\r",
+						ID, value_VolContainer, value_Voltage);
+				//SIM_post
+				if (SIM_Wakeup(3000)) {
+					LOG("[ANS]", "FAIL");
+				}
+				if (!SIMCom_Post(data_PostSimCom, url_postper, 5000)) {
+					if (strstr((char*) SIM_data, "true")) {
+						LOG("[ANS]", "OK");
+					} else if (strstr((char*) SIM_data, "false")) {
+						LOG("[ANS]", "REJECT");
+					} else {
+						LOG("[ANS]", "UNDEFINE");
+					}
+				} else {
+					LOG("[ANS]", "FAIL");
+				}
+				SIM_Sleep(3000);
+				LOG("[ANS]", "DONE");
+				FUNCTION = SLEEP;
+				break;
+			case EXTI_WAKEUP:
+				LOG("[ANS]", "EXTI_WAKEUP");
+				FUNCTION = SPACE;
+				break;
+			case CLOSE_VALVE:
+				LOG("[ANS]", "CLOSE_VALVE");
+				HAL_GPIO_WritePin(VALVE_GPIO_Port, VALVE_Pin, GPIO_PIN_SET);
+				FUNCTION = SPACE;
+				break;
+			case OPEN_VALVE:
+				LOG("[ANS]", "OPEN_VALVE");
+				HAL_GPIO_WritePin(VALVE_GPIO_Port, VALVE_Pin, GPIO_PIN_RESET);
+				FUNCTION = SPACE;
+				break;
+			case TURN_OFF:
+				LOG("[ANS]", "TURN_OFF_MOTOR_DOOR");
+				HAL_GPIO_WritePin(Door_IN1_GPIO_Port, Door_IN1_Pin,
+						GPIO_PIN_RESET);
+				HAL_GPIO_WritePin(Door_IN2_GPIO_Port, Door_IN2_Pin,
+						GPIO_PIN_RESET);
+				HAL_GPIO_WritePin(DEVICE_GPIO_Port, DEVICE_Pin, GPIO_PIN_SET); //Turn off sensor source
+				FUNCTION = SPACE;
+				break;
+			case TEST_PERCENT:
+				value_VolContainer = Ultra_ReadDistance();
+				value_Voltage = Read_Voltage();
+				//Prepare data
+				snprintf(data_PostSimCom, sizeof(data_PostSimCom),
+						"{\"volume\": %.2f,\"battery\": %.2f}",
+						value_VolContainer, value_Voltage);
+				//SIM_post
+				LOG("TEST", data_PostSimCom);
+
+				FUNCTION = SPACE;
+				break;
+			case TEST_MEASURE:
+				//Turn on the sensor
+				HAL_GPIO_WritePin(DEVICE_GPIO_Port, DEVICE_Pin, GPIO_PIN_RESET);
+				HAL_Delay(1500);
+
+				/* ===========================
+				 *  I2C Bus Scan (hi2c1)
+				 * ===========================*/
+				for (uint8_t addr7 = 1; addr7 < 128; addr7++) {
+					// HAL is expecting 8-bit address(7bit << 1)
+					HAL_StatusTypeDef st = HAL_I2C_IsDeviceReady(&hi2c1,
+							(uint16_t) (addr7 << 1), 1, 5);
+					if (st == HAL_OK) {
+						snprintf(data_TransmitHeader,
+								sizeof(data_TransmitHeader),
+								"I2C FOUND: 0x%02X", addr7);
+						LOG("[DEBUG]", data_TransmitHeader);
+					}
+				}
+
+				ultra = Ultra_ReadDistance();
+
+				snprintf(data_TransmitHeader, sizeof(data_TransmitHeader),
+						"Ultra=%.2f cm", ultra); // ToDo : Set the unit correctly
+				LOG("[ANS]", data_TransmitHeader);
+
+				// 1) Read the Sensing data.
+				distance_Tof = VL53L0X_ReadDistance(&distanceStr,
+						offset_DistanceTof); //(mm)
+
+				// HX711 Original data (to debug)
+				loadcell_1_testmeasure = HX711_Get_Value(&scale1, 30, 2000);
+				loadcell_2_testmeasure = HX711_Get_Value(&scale2, 30, 2000);
+
+				loadcell_1 = loadcell_1_testmeasure - loadcell_1_open;
+				loadcell_2 = loadcell_2_testmeasure - loadcell_2_open;
+
+				// remove the noise around 0.
+				if (fabsf(loadcell_1) < 5.0f)
+					loadcell_1 = 0.0f;
+				if (fabsf(loadcell_2) < 5.0f)
+					loadcell_2 = 0.0f;
+
+				loadcell_sum = loadcell_1 + loadcell_2;
+
+				// Total mass using interpolation table HX711 (LC1 + LC2)
+				lc_mass = HX711_InterpFromTable(loadcell_sum);   // unit : g
+
+				// Estimation water mass by WATERSENSOR
+				ws_height = WATER_ReadHeightMM_Quick(220);    // unit : mm
+				water_weight = WATER_ReadLastOn_Quick(220);       // unit :g
+
+				// Estimated oil mass = total mass - water weight
+				oil_weight = lc_mass - water_weight;
+				if (oil_weight < 0.0f) {
+					oil_weight = 0.0f;   // Keep the value at 0 or above.
+				}
+
+				//Turn off the sensor
+				HAL_GPIO_WritePin(DEVICE_GPIO_Port, DEVICE_Pin, GPIO_PIN_SET);
+
+				// 2) Print the UART Log
+
+				// (1) HX711 Original value.
+				snprintf(data_TransmitHeader, sizeof(data_TransmitHeader),
+						"Distance=%.2f mm, LC1_raw=%.2f, LC2_raw=%.2f;",
+						distance_Tof, loadcell_1, loadcell_2);
+				LOG("[ANS]", data_TransmitHeader);
+				// (1) HX711 Original value.
+				snprintf(data_TransmitHeader, sizeof(data_TransmitHeader),
+						"lc1_test=%.2f g, lc2_test=%.2f g, lc1_open=%.2f g, lc2_open=%.2f g;",
+						loadcell_1_testmeasure, loadcell_2_testmeasure,
+						loadcell_1_open, loadcell_2_open);
+				LOG("[ANS]", data_TransmitHeader);
+				// (2) (2) Total mass that brought by interpolation table vs Water weight that sensed by water sensor.
+				snprintf(data_TransmitHeader, sizeof(data_TransmitHeader),
+						"LC_mass=%.1f g, WS_mass=%.1f g, Oil_mass=%.1f g;",
+						lc_mass, water_weight, oil_weight);
+				LOG("[ANS]", data_TransmitHeader);
+
+				// (3) WATERSENSOR height debug
+				snprintf(data_TransmitHeader, sizeof(data_TransmitHeader),
+						"WS_height=%.1f mm", ws_height);
+				LOG("[DEBUG]", data_TransmitHeader);
+
+				FUNCTION = SPACE;
+				break;
+			case TEST_SDCLOSE:
+				//Control motor
+				HAL_GPIO_WritePin(Door_IN1_GPIO_Port, Door_IN1_Pin,
+						GPIO_PIN_RESET);
+				HAL_GPIO_WritePin(Door_IN2_GPIO_Port, Door_IN2_Pin,
+						GPIO_PIN_SET);
+				//Transmit to header
+				LOG("[ANS]", "OK");
+				FUNCTION = SPACE;
+				break;
+			case TEST_SDOPEN:
+				//Control motor
+				HAL_GPIO_WritePin(Door_IN1_GPIO_Port, Door_IN1_Pin,
+						GPIO_PIN_SET);
+				HAL_GPIO_WritePin(Door_IN2_GPIO_Port, Door_IN2_Pin,
+						GPIO_PIN_RESET);
+				//Transmit to header
+				LOG("[ANS]", "OK");
+				FUNCTION = SPACE;
+				break;
+			case SETTING:
+				ultra = Ultra_ReadDistance();
+				value_VolContainer = (525 - ultra) / 525 * 80;
+
+				if (value_VolContainer < 0.0f) {
+					value_VolContainer = 0.0f;
+				}
+
+				snprintf(data_TransmitHeader, sizeof(data_TransmitHeader),
+						"Container=%.2f L", value_VolContainer); // ToDo : Set the unit correctly
+				LOG("[ANS]", data_TransmitHeader);
+				FUNCTION = SPACE;
+				break;
+			case SPACE:
+				break;
+			}
+			LOG_DataValid = false;
+			memset(LOG_buffer, '\0', UART_RX_BUFFER_SIZE); //reset receive buffer
+		}
+	}
+	/* USER CODE END 3 */
+}
+
+/**
+ * @brief System Clock Configuration
+ * @retval None
+ */
+void SystemClock_Config(void) {
+	RCC_OscInitTypeDef RCC_OscInitStruct = { 0 };
+	RCC_ClkInitTypeDef RCC_ClkInitStruct = { 0 };
+	RCC_PeriphCLKInitTypeDef PeriphClkInit = { 0 };
+
+	/** Initializes the RCC Oscillators according to the specified parameters
+	 * in the RCC_OscInitTypeDef structure.
+	 */
+	RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE
+			| RCC_OSCILLATORTYPE_LSE;
+	RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+	RCC_OscInitStruct.HSEPredivValue = RCC_HSE_PREDIV_DIV1;
+	RCC_OscInitStruct.LSEState = RCC_LSE_ON;
+	RCC_OscInitStruct.HSIState = RCC_HSI_ON;
+	RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+	RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+	RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL9;
+	if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK) {
+		Error_Handler();
+	}
+
+	/** Initializes the CPU, AHB and APB buses clocks
+	 */
+	RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK
+			| RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2;
+	RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+	RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+	RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
+	RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
+
+	if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK) {
+		Error_Handler();
+	}
+	PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_RTC | RCC_PERIPHCLK_ADC;
+	PeriphClkInit.RTCClockSelection = RCC_RTCCLKSOURCE_LSE;
+	PeriphClkInit.AdcClockSelection = RCC_ADCPCLK2_DIV6;
+	if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK) {
+		Error_Handler();
+	}
+}
+
+/**
+ * @brief ADC1 Initialization Function
+ * @param None
+ * @retval None
+ */
+static void MX_ADC1_Init(void) {
+
+	/* USER CODE BEGIN ADC1_Init 0 */
+
+	/* USER CODE END ADC1_Init 0 */
+
+	ADC_ChannelConfTypeDef sConfig = { 0 };
+
+	/* USER CODE BEGIN ADC1_Init 1 */
+
+	/* USER CODE END ADC1_Init 1 */
+
+	/** Common config
+	 */
+	hadc1.Instance = ADC1;
+	hadc1.Init.ScanConvMode = ADC_SCAN_DISABLE;
+	hadc1.Init.ContinuousConvMode = DISABLE;
+	hadc1.Init.DiscontinuousConvMode = DISABLE;
+	hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+	hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
+	hadc1.Init.NbrOfConversion = 1;
+	if (HAL_ADC_Init(&hadc1) != HAL_OK) {
+		Error_Handler();
+	}
+
+	/** Configure Regular Channel
+	 */
+	sConfig.Channel = ADC_CHANNEL_0;
+	sConfig.Rank = ADC_REGULAR_RANK_1;
+	sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
+	if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) {
+		Error_Handler();
+	}
+	/* USER CODE BEGIN ADC1_Init 2 */
+
+	/* USER CODE END ADC1_Init 2 */
+
+}
+
+/**
+ * @brief ADC2 Initialization Function
+ * @param None
+ * @retval None
+ */
+static void MX_ADC2_Init(void) {
+
+	/* USER CODE BEGIN ADC2_Init 0 */
+
+	/* USER CODE END ADC2_Init 0 */
+
+	ADC_ChannelConfTypeDef sConfig = { 0 };
+
+	/* USER CODE BEGIN ADC2_Init 1 */
+
+	/* USER CODE END ADC2_Init 1 */
+
+	/** Common config
+	 */
+	hadc2.Instance = ADC2;
+	hadc2.Init.ScanConvMode = ADC_SCAN_DISABLE;
+	hadc2.Init.ContinuousConvMode = DISABLE;
+	hadc2.Init.DiscontinuousConvMode = DISABLE;
+	hadc2.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+	hadc2.Init.DataAlign = ADC_DATAALIGN_RIGHT;
+	hadc2.Init.NbrOfConversion = 1;
+	if (HAL_ADC_Init(&hadc2) != HAL_OK) {
+		Error_Handler();
+	}
+
+	/** Configure Regular Channel
+	 */
+	sConfig.Channel = ADC_CHANNEL_1;
+	sConfig.Rank = ADC_REGULAR_RANK_1;
+	sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
+	if (HAL_ADC_ConfigChannel(&hadc2, &sConfig) != HAL_OK) {
+		Error_Handler();
+	}
+	/* USER CODE BEGIN ADC2_Init 2 */
+
+	/* USER CODE END ADC2_Init 2 */
+
+}
+
+/**
+ * @brief I2C1 Initialization Function
+ * @param None
+ * @retval None
+ */
+static void MX_I2C1_Init(void) {
+
+	/* USER CODE BEGIN I2C1_Init 0 */
+
+	/* USER CODE END I2C1_Init 0 */
+
+	/* USER CODE BEGIN I2C1_Init 1 */
+
+	/* USER CODE END I2C1_Init 1 */
+	hi2c1.Instance = I2C1;
+	hi2c1.Init.ClockSpeed = 400000;
+	hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
+	hi2c1.Init.OwnAddress1 = 0;
+	hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+	hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+	hi2c1.Init.OwnAddress2 = 0;
+	hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+	hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+	if (HAL_I2C_Init(&hi2c1) != HAL_OK) {
+		Error_Handler();
+	}
+	/* USER CODE BEGIN I2C1_Init 2 */
+
+	/* USER CODE END I2C1_Init 2 */
+
+}
+
+/**
+ * @brief RTC Initialization Function
+ * @param None
+ * @retval None
+ */
+static void MX_RTC_Init(void) {
+
+	/* USER CODE BEGIN RTC_Init 0 */
+
+	/* USER CODE END RTC_Init 0 */
+
+	RTC_TimeTypeDef sTime = { 0 };
+	RTC_DateTypeDef DateToUpdate = { 0 };
+	RTC_AlarmTypeDef sAlarm = { 0 };
+
+	/* USER CODE BEGIN RTC_Init 1 */
+
+	/* USER CODE END RTC_Init 1 */
+
+	/** Initialize RTC Only
+	 */
+	hrtc.Instance = RTC;
+	hrtc.Init.AsynchPrediv = RTC_AUTO_1_SECOND;
+	hrtc.Init.OutPut = RTC_OUTPUTSOURCE_ALARM;
+	if (HAL_RTC_Init(&hrtc) != HAL_OK) {
+		Error_Handler();
+	}
+
+	/* USER CODE BEGIN Check_RTC_BKUP */
+
+	/* USER CODE END Check_RTC_BKUP */
+
+	/** Initialize RTC and set the Time and Date
+	 */
+	sTime.Hours = 0;
+	sTime.Minutes = 0;
+	sTime.Seconds = 0;
+
+	if (HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BIN) != HAL_OK) {
+		Error_Handler();
+	}
+	DateToUpdate.WeekDay = RTC_WEEKDAY_MONDAY;
+	DateToUpdate.Month = RTC_MONTH_JANUARY;
+	DateToUpdate.Date = 1;
+	DateToUpdate.Year = 0;
+
+	if (HAL_RTC_SetDate(&hrtc, &DateToUpdate, RTC_FORMAT_BIN) != HAL_OK) {
+		Error_Handler();
+	}
+
+	/** Enable the Alarm A
+	 */
+	sAlarm.AlarmTime.Hours = 12;
+	sAlarm.AlarmTime.Minutes = 0;
+	sAlarm.AlarmTime.Seconds = 0;
+	sAlarm.Alarm = RTC_ALARM_A;
+	if (HAL_RTC_SetAlarm_IT(&hrtc, &sAlarm, RTC_FORMAT_BIN) != HAL_OK) {
+		Error_Handler();
+	}
+	/* USER CODE BEGIN RTC_Init 2 */
+
+	/* USER CODE END RTC_Init 2 */
+
+}
+
+/**
+ * @brief TIM1 Initialization Function
+ * @param None
+ * @retval None
+ */
+static void MX_TIM1_Init(void) {
+
+	/* USER CODE BEGIN TIM1_Init 0 */
+
+	/* USER CODE END TIM1_Init 0 */
+
+	TIM_ClockConfigTypeDef sClockSourceConfig = { 0 };
+	TIM_MasterConfigTypeDef sMasterConfig = { 0 };
+
+	/* USER CODE BEGIN TIM1_Init 1 */
+
+	/* USER CODE END TIM1_Init 1 */
+	htim1.Instance = TIM1;
+	htim1.Init.Prescaler = 72 - 1;
+	htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
+	htim1.Init.Period = 65535 - 1;
+	htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+	htim1.Init.RepetitionCounter = 0;
+	htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+	if (HAL_TIM_Base_Init(&htim1) != HAL_OK) {
+		Error_Handler();
+	}
+	sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+	if (HAL_TIM_ConfigClockSource(&htim1, &sClockSourceConfig) != HAL_OK) {
+		Error_Handler();
+	}
+	sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+	sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+	if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig)
+			!= HAL_OK) {
+		Error_Handler();
+	}
+	/* USER CODE BEGIN TIM1_Init 2 */
+
+	/* USER CODE END TIM1_Init 2 */
+
+}
+
+/**
+ * @brief USART1 Initialization Function
+ * @param None
+ * @retval None
+ */
+static void MX_USART1_UART_Init(void) {
+
+	/* USER CODE BEGIN USART1_Init 0 */
+
+	/* USER CODE END USART1_Init 0 */
+
+	/* USER CODE BEGIN USART1_Init 1 */
+
+	/* USER CODE END USART1_Init 1 */
+	huart1.Instance = USART1;
+	huart1.Init.BaudRate = 115200;
+	huart1.Init.WordLength = UART_WORDLENGTH_8B;
+	huart1.Init.StopBits = UART_STOPBITS_1;
+	huart1.Init.Parity = UART_PARITY_NONE;
+	huart1.Init.Mode = UART_MODE_TX_RX;
+	huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+	huart1.Init.OverSampling = UART_OVERSAMPLING_16;
+	if (HAL_UART_Init(&huart1) != HAL_OK) {
+		Error_Handler();
+	}
+	/* USER CODE BEGIN USART1_Init 2 */
+
+	/* USER CODE END USART1_Init 2 */
+
+}
+
+/**
+ * @brief USART2 Initialization Function
+ * @param None
+ * @retval None
+ */
+static void MX_USART2_UART_Init(void) {
+
+	/* USER CODE BEGIN USART2_Init 0 */
+
+	/* USER CODE END USART2_Init 0 */
+
+	/* USER CODE BEGIN USART2_Init 1 */
+
+	/* USER CODE END USART2_Init 1 */
+	huart2.Instance = USART2;
+	huart2.Init.BaudRate = 115200;
+	huart2.Init.WordLength = UART_WORDLENGTH_8B;
+	huart2.Init.StopBits = UART_STOPBITS_1;
+	huart2.Init.Parity = UART_PARITY_NONE;
+	huart2.Init.Mode = UART_MODE_TX_RX;
+	huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+	huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+	if (HAL_UART_Init(&huart2) != HAL_OK) {
+		Error_Handler();
+	}
+	/* USER CODE BEGIN USART2_Init 2 */
+
+	/* USER CODE END USART2_Init 2 */
+
+}
+
+/**
+ * @brief GPIO Initialization Function
+ * @param None
+ * @retval None
+ */
+static void MX_GPIO_Init(void) {
+	GPIO_InitTypeDef GPIO_InitStruct = { 0 };
+	/* USER CODE BEGIN MX_GPIO_Init_1 */
+
+	/* USER CODE END MX_GPIO_Init_1 */
+
+	/* GPIO Ports Clock Enable */
+	__HAL_RCC_GPIOC_CLK_ENABLE();
+	__HAL_RCC_GPIOD_CLK_ENABLE();
+	__HAL_RCC_GPIOA_CLK_ENABLE();
+	__HAL_RCC_GPIOB_CLK_ENABLE();
+
+	/*Configure GPIO pin Output Level */
+	HAL_GPIO_WritePin(GPIOA, LOCK_Pin | VALVE_Pin, GPIO_PIN_RESET);
+
+	/*Configure GPIO pin Output Level */
+	HAL_GPIO_WritePin(DAEGUN_LOAD_GPIO_Port, DAEGUN_LOAD_Pin, GPIO_PIN_SET);
+
+	/*Configure GPIO pin Output Level */
+	HAL_GPIO_WritePin(GPIOB,
+			DEVICE_Pin | LED_Pin | Door_IN1_Pin | Door_IN2_Pin | U_Trig_Pin
+					| LC_SCK_Pin, GPIO_PIN_RESET);
+
+	/*Configure GPIO pins : LOCK_Pin VALVE_Pin */
+	GPIO_InitStruct.Pin = LOCK_Pin | VALVE_Pin;
+	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+	HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+	/*Configure GPIO pin : DAEGUN_LOAD_Pin */
+	GPIO_InitStruct.Pin = DAEGUN_LOAD_Pin;
+	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
+	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+	HAL_GPIO_Init(DAEGUN_LOAD_GPIO_Port, &GPIO_InitStruct);
+
+	/*Configure GPIO pin : DEVICE_Pin */
+	GPIO_InitStruct.Pin = DEVICE_Pin;
+	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
+	GPIO_InitStruct.Pull = GPIO_PULLUP;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+	HAL_GPIO_Init(DEVICE_GPIO_Port, &GPIO_InitStruct);
+
+	/*Configure GPIO pins : LED_Pin Door_IN1_Pin Door_IN2_Pin U_Trig_Pin
+	 LC_SCK_Pin */
+	GPIO_InitStruct.Pin = LED_Pin | Door_IN1_Pin | Door_IN2_Pin | U_Trig_Pin
+			| LC_SCK_Pin;
+	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+	/*Configure GPIO pin : EXTI_Wakeup_Pin */
+	GPIO_InitStruct.Pin = EXTI_Wakeup_Pin;
+	GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	HAL_GPIO_Init(EXTI_Wakeup_GPIO_Port, &GPIO_InitStruct);
+
+	/*Configure GPIO pin : U_Echo_Pin */
+	GPIO_InitStruct.Pin = U_Echo_Pin;
+	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+	GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+	HAL_GPIO_Init(U_Echo_GPIO_Port, &GPIO_InitStruct);
+
+	/*Configure GPIO pins : LC_Data1_Pin LC_Data2_Pin */
+	GPIO_InitStruct.Pin = LC_Data1_Pin | LC_Data2_Pin;
+	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+	GPIO_InitStruct.Pull = GPIO_PULLUP;
+	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+	/* EXTI interrupt init*/
+	HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
+	HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
+
+	/* USER CODE BEGIN MX_GPIO_Init_2 */
+
+	/* USER CODE END MX_GPIO_Init_2 */
+}
+
+/* USER CODE BEGIN 4 */
+void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
+	// LOG UART Handle
+	if (huart->Instance == USART1) {
+		if (Size < UART_RX_BUFFER_SIZE) {
+			LOG_buffer[Size] = '\0';   // ★ 문자열 끝 표시
+		} else {
+			LOG_buffer[UART_RX_BUFFER_SIZE - 1] = '\0';
+		}
+
+		LOG_DataValid = true;
+		HAL_UARTEx_ReceiveToIdle_IT(&huart1, LOG_buffer, UART_RX_BUFFER_SIZE);
+	}
+
+	// SIMCom UART Handle
+	if (huart->Instance == USART2) {
+		if (Size < UART_RX_BUFFER_SIZE) {
+			SIM_buffer[Size] = '\0';
+		} else {
+			SIM_buffer[UART_RX_BUFFER_SIZE - 1] = '\0';
+		}
+
+		SIM_DataValid = true;
+		HAL_UARTEx_ReceiveToIdle_IT(&huart2, SIM_buffer, UART_RX_BUFFER_SIZE);
+	}
+}
+
+// void USB_CDC_RxHandler(uint8_t* Buf, uint32_t Len)
+// {
+// 	LOG_DataValid = true;
+// 	memcpy(LOG_buffer, Buf, Len);
+// }
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
+	if ((GPIO_Pin == GPIO_PIN_8) && flag_EXTI) {
+		EXTI_Wakeup = true;      // ★ 여기만 세트
+		LOG_DataValid = true;    // 메인 루프 깨우는 용도
+	}
+}
+
+void HAL_RTC_AlarmAEventCallback(RTC_HandleTypeDef *hrtc) {
+	Alarm_Wakeup = true;         // ★ 알람 이벤트 플래그
+	LOG_DataValid = true;        // 메인 루프 깨우는 용도
+	Set_RTC(0, 0, 0);
+}
+
+/* USER CODE END 4 */
+
+/**
+ * @brief  This function is executed in case of error occurrence.
+ * @retval None
+ */
+void Error_Handler(void) {
+	/* USER CODE BEGIN Error_Handler_Debug */
+	/* User can add his own implementation to report the HAL error return state */
+	__disable_irq();
+	while (1) {
+	}
+	/* USER CODE END Error_Handler_Debug */
+}
+#ifdef USE_FULL_ASSERT
+/**
+  * @brief  Reports the name of the source file and the source line number
+  *         where the assert_param error has occurred.
+  * @param  file: pointer to the source file name
+  * @param  line: assert_param error line source number
+  * @retval None
+  */
+void assert_failed(uint8_t *file, uint32_t line)
+{
+  /* USER CODE BEGIN 6 */
+	  /* User can add his own implementation to report the file name and line number,
+		 ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+  /* USER CODE END 6 */
+}
+#endif /* USE_FULL_ASSERT */

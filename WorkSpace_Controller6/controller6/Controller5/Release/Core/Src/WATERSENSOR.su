@@ -1,0 +1,9 @@
+../Core/Src/WATERSENSOR.c:17:6:WATER_Init	8	static
+../Core/Src/WATERSENSOR.c:36:6:WATER_SetActiveHandle	0	static
+../Core/Src/WATERSENSOR.c:43:6:WATER_InitDefault	0	static
+../Core/Src/WATERSENSOR.c:55:19:WATER_ReadRaw	48	static
+../Core/Src/WATERSENSOR.c:91:5:WATER_ComputeHeightMM	8	static
+../Core/Src/WATERSENSOR.c:104:5:WATER_ReadHeightMM_Threshold	40	static
+../Core/Src/WATERSENSOR.c:117:5:WATER_ReadLastOn_Threshold	32	static
+../Core/Src/WATERSENSOR.c:132:5:WATER_ReadHeightMM_Quick	0	static
+../Core/Src/WATERSENSOR.c:138:5:WATER_ReadLastOn_Quick	0	static

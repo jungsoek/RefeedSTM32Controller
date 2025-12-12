@@ -1,0 +1,7 @@
+../Core/Src/Handlers/Validation.c:16:6:parsePhoneNumber	32	static
+../Core/Src/Handlers/Validation.c:47:6:isPhoneNumberValid	24	static
+../Core/Src/Handlers/Validation.c:61:6:buildIdentityJSON	40	static
+../Core/Src/Handlers/Validation.c:80:6:simWakeupCheck	16	static
+../Core/Src/Handlers/Validation.c:88:11:simIdentityRequest	24	static
+../Core/Src/Handlers/Validation.c:108:6:printSimResult	16	static
+../Core/Src/Handlers/Validation.c:122:6:Validation	312	static
