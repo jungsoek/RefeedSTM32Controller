@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">
+<refactoring comment="Rename resource &apos;Controller/ASIS_TOBE/ASIS.md&apos; to &apos;REVISIONS.md&apos;" description="Rename resource &apos;ASIS.md&apos;" flags="7" id="org.eclipse.ltk.core.refactoring.rename.resource" input="ASIS_TOBE/ASIS.md" name="REVISIONS.md" stamp="1765864033069" updateReferences="true"/>
+</session>

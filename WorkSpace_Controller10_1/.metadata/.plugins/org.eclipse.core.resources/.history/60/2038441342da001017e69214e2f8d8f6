@@ -1,0 +1,397 @@
+#include "WATERSENSOR.h"
+#include <string.h>
+#include <stdlib.h>
+#include <time.h>
+
+
+
+/* Upper-bank index mapping (device order -> physical 8..19) */
+static const uint8_t HIGH_MAP[12] = {
+    8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19
+};
+
+static const float ws_mass_table[21] = {
+    0.0f,    // 0 : 거의 없음
+    20.0f,   // 1 : 순수 기름
+    40.0f,   // 2 : 순수 기름
+    60.0f,   // 3 : 순수 기름
+    80.0f,   // 4 : 순수 기름 → 불순한 기름 시작
+    100.0f,  // 5 : 불순한 기름
+    120.0f,  // 6 : 불순한 기름
+    140.0f,  // 7 : 불순한 기름
+    160.0f,  // 8 : 불순한 물 시작
+    180.0f,  // 9 : 불순한 물
+    200.0f,  // 10 : 불순한 물
+    220.0f,  // 11 : 불순한 물 → 순수 물 시작
+    240.0f,  // 12 : 순수 물
+    260.0f,  // 13 : 순수 물
+    280.0f,  // 14 : 순수 물
+    300.0f,  // 15 : 순수 물
+    320.0f,  // 16 : 순수 물
+    340.0f,  // 17 : 순수 물
+    360.0f,  // 18 : 순수 물
+    380.0f,  // 19 : 순수 물
+    400.0f   // 20 : 순수 물
+};
+
+
+static float WS_IndexToMass(uint8_t ws_index)
+{
+    if (ws_index > 20) {
+        return -1.0f;   // 범위 밖
+    }
+    return ws_mass_table[ws_index];
+}
+
+/* Active handle used by the Quick APIs */
+static WATER_HandleTypeDef *g_active_hws = NULL;
+
+/* HAL expects a 7-bit address shifted by 1 bit on STM32F1 */
+static inline uint16_t to_hal_addr(uint8_t addr7) {
+    return (uint16_t)(addr7 << 1);
+}
+
+void WATER_Init(WATER_HandleTypeDef *hws,
+                I2C_HandleTypeDef *i2c,
+                uint8_t addr_low7,
+                uint8_t addr_high7,
+                uint8_t default_threshold,
+                uint32_t timeout_ms)
+{
+    if (!hws) return;
+
+    hws->i2c        = i2c;
+    hws->addr_low   = addr_low7   ? addr_low7   : WATER_ADDR_LOW_DEF;
+    hws->addr_high  = addr_high7  ? addr_high7  : WATER_ADDR_HIGH_DEF;
+    hws->threshold  = default_threshold;                /* can be 0; Quick calls pass threshold anyway */
+    hws->timeout_ms = timeout_ms  ? timeout_ms  : WATER_TIMEOUT_DEF;
+
+    /* Register as the active handle by default */
+    g_active_hws = hws;
+}
+
+void WATER_SetActiveHandle(WATER_HandleTypeDef *hws)
+{
+    g_active_hws = hws;
+}
+
+/* Initialize with built-in defaults and set as active.
+ * You still need to provide the I2C handle once from your app. */
+void WATER_InitDefault(I2C_HandleTypeDef *i2c)
+{
+    static WATER_HandleTypeDef s_hws; /* kept internal to this module */
+    WATER_Init(&s_hws, i2c, WATER_ADDR_LOW_DEF, WATER_ADDR_HIGH_DEF, 0 /*default thres*/, WATER_TIMEOUT_DEF);
+}
+
+static HAL_StatusTypeDef i2c_recv(I2C_HandleTypeDef *i2c, uint8_t addr7, uint8_t *buf, uint16_t len, uint32_t to_ms)
+{
+    if (!i2c) return HAL_ERROR;
+    return HAL_I2C_Master_Receive(i2c, to_hal_addr(addr7), buf, len, to_ms);
+}
+
+HAL_StatusTypeDef WATER_ReadRaw(WATER_HandleTypeDef *hws, uint8_t raw_phys20[20])
+{
+    if (!hws || !hws->i2c || !raw_phys20) return HAL_ERROR;
+
+    uint8_t low_data[8]   = {0};
+    uint8_t high_data[12] = {0};
+
+    HAL_StatusTypeDef st1 = i2c_recv(hws->i2c, hws->addr_low,  low_data,  8,  hws->timeout_ms);
+    HAL_StatusTypeDef st2 = i2c_recv(hws->i2c, hws->addr_high, high_data, 12, hws->timeout_ms);
+
+    if (st1 != HAL_OK || st2 != HAL_OK) {
+        return HAL_ERROR;
+    }
+
+    /* Remap to physical order 0..19 */
+    memcpy(&raw_phys20[0], low_data, 8);
+    for (uint8_t j = 0; j < 12; j++) {
+        raw_phys20[ HIGH_MAP[j] ] = high_data[j];
+    }
+
+    return HAL_OK;
+}
+
+WATER_RawDataFull_t WATER_ReadRawFull(WATER_HandleTypeDef *hws)
+{
+    WATER_RawDataFull_t ret;
+    memset(&ret, 0, sizeof(ret));
+
+    // 핸들 유효성 확인
+    if (!hws) {
+        LOG("[ERR]", "hws is NULL");
+        ret.valid = 0;
+        ret.st1 = HAL_ERROR;
+        ret.st2 = HAL_ERROR;
+        return ret;
+    }
+
+    if (!hws->i2c) {
+        LOG("[ERR]", "I2C handle is NULL");
+        ret.valid = 0;
+        ret.st1 = HAL_ERROR;
+        ret.st2 = HAL_ERROR;
+        return ret;
+    }
+
+    uint8_t low_data[8]   = {0};
+    uint8_t high_data[12] = {0};
+
+    // I2C 통신
+    ret.st1 = i2c_recv(hws->i2c, hws->addr_low,  low_data,  8,  hws->timeout_ms);
+    ret.st2 = i2c_recv(hws->i2c, hws->addr_high, high_data, 12, hws->timeout_ms);
+
+    LOG("[DBG]", "I2C Status - Low:%d, High:%d", ret.st1, ret.st2);
+
+    if (ret.st1 != HAL_OK || ret.st2 != HAL_OK) {
+        ret.valid = 0;
+        LOG("[ERR]", "I2C read failed, raw data invalid");
+        return ret;
+    }
+
+    // 정상일 경우 raw_phys20 채우기
+    memcpy(&ret.data[0], low_data, 8);
+    for (uint8_t j = 0; j < 12; j++) {
+        ret.data[ HIGH_MAP[j] ] = high_data[j];
+    }
+
+    ret.valid = 1;
+
+    // raw 데이터 확인용 로그
+    char buf[128];
+    int len = 0;
+    len += snprintf(buf + len, sizeof(buf) - len, "RAW_DATA: ");
+    for (int i = 0; i < 20; i++) {
+        len += snprintf(buf + len, sizeof(buf) - len, "%d", ret.data[i]);
+        if (i < 19) len += snprintf(buf + len, sizeof(buf) - len, ",");
+    }
+    LOG("[DBG]", buf);
+
+    return ret;
+}
+
+
+
+/* Compute last_on using a given threshold against raw segments. */
+static int compute_last_on_with_threshold(const uint8_t raw_phys20[20], uint8_t threshold)
+{
+    int last_on = -1;
+    for (uint8_t i = 0; i < 20; i++) {
+        if (raw_phys20[i] > threshold) {
+            last_on = (int)i;
+        }
+    }
+    return last_on+1;
+}
+
+
+
+/* Convert raw segments to height (mm) using the handle's stored threshold. */
+float WATER_ComputeHeightMM(const WATER_HandleTypeDef *hws, const uint8_t raw_phys20[20])
+{
+    if (!hws || !raw_phys20) return -1;
+
+    int last_on = compute_last_on_with_threshold(raw_phys20, hws->threshold);
+    if (last_on < 0) return 0;
+
+    /* 5 mm pitch, 3 mm segment thickness */
+    return last_on * 5 + 3;
+}
+
+/* === threshold-explicit versions === */
+
+float WATER_ReadHeightMM_Threshold(WATER_HandleTypeDef *hws, uint8_t threshold)
+{
+    uint8_t raw[20] = {0};
+    if (WATER_ReadRaw(hws, raw) != HAL_OK) {
+        return -1;  /* I2C failure */
+    }
+
+    int last_on = compute_last_on_with_threshold(raw, threshold);
+    if (last_on < 0) return 0;
+
+    return (last_on + 1) * 5;
+}
+
+
+/* TODO
+ *
+ *  */
+float WATER_ReadLastOn_Threshold(WATER_HandleTypeDef *hws, uint8_t threshold)
+{
+    if (!hws) return -1.0f;
+
+    enum { N_SAMPLES = 10 };
+    uint8_t raw[20];
+    int counts[21] = {0};   // last_on 값 0~20 카운트
+    int valid_samples = 0;
+
+    for (int n = 0; n < N_SAMPLES; n++) {
+        if (WATER_ReadRaw(hws, raw) != HAL_OK) {
+            continue;  // I2C 실패 샘플은 스킵
+        }
+
+        int last_on = compute_last_on_with_threshold(raw, threshold); // 0~20
+        if (last_on < 0) last_on = 0;
+        if (last_on > 20) last_on = 20;
+
+        counts[last_on]++;
+        valid_samples++;
+    }
+
+    if (valid_samples == 0) {
+        return -1.0f;  // 전부 I2C 실패
+    }
+
+    // 최빈값(last_on) 선택
+    int best_last_on = 0;
+    int best_count = counts[0];
+    for (int i = 1; i <= 20; i++) {
+        if (counts[i] > best_count) {
+            best_count = counts[i];
+            best_last_on = i;
+        }
+    }
+
+    if (best_last_on <= 0) {
+        return 0.0f;   // 아무 것도 감지되지 않음
+    }
+
+    // ============================
+    // last_on 기반 물/기름 분리
+    // ============================
+    float total_mass = 0.0f;
+    int liquid_height = best_last_on; // 1~20
+
+    if (liquid_height > 0) {
+        int oil_segs = liquid_height / 3;           // 상위 1/3 정도를 기름
+        if (oil_segs > liquid_height) oil_segs = liquid_height;
+        int water_segs = liquid_height - oil_segs;  // 나머지 아래쪽은 물
+
+        // 위쪽부터 기름, 아래쪽 물
+        for (int i = 0; i < oil_segs; i++) {
+            total_mass += WS_IndexToMass(liquid_height - i);
+        }
+        for (int i = 0; i < water_segs; i++) {
+            total_mass += WS_IndexToMass(i + 1);
+        }
+    }
+
+    // ============================
+    // ± 오차 적용
+    // ============================
+    float percent = 0.0f;
+    if (total_mass <= 100.0f) {
+        percent = 0.10f;      // ±10%
+    } else if (total_mass <= 1000.0f) {
+        percent = 0.05f;      // ±5%
+    } else {
+        percent = 0.025f;     // ±2.5%
+    }
+
+    float r = ((float)(rand() % 2001) - 1000.0f) / 1000.0f; // -1.0 ~ +1.0
+    float randomized = total_mass + (total_mass * percent * r);
+    if (randomized < 0.0f) randomized = 0.0f;
+
+    return randomized;
+}
+
+
+//float WATER_ReadLastOn_Threshold(WATER_HandleTypeDef *hws, uint8_t threshold)
+//{
+//    if (!hws) return -1.0f;
+//
+//    enum { N_SAMPLES = 10 };
+//    uint8_t raw[20];
+//    int counts[21] = {0};   // last_on 값 0~20 카운트
+//    int valid_samples = 0;
+//
+//    for (int n = 0; n < N_SAMPLES; n++) {
+//        if (WATER_ReadRaw(hws, raw) != HAL_OK) {
+//            continue;  // I2C 실패 샘플은 스킵
+//        }
+//
+//        int last_on = compute_last_on_with_threshold(raw, threshold); // 0~20
+//        if (last_on < 0) last_on = 0;
+//        if (last_on > 20) last_on = 20;
+//
+//        counts[last_on]++;
+//        valid_samples++;
+//    }
+//
+//    if (valid_samples == 0) {
+//        return -1.0f;  // 전부 I2C 실패
+//    }
+//
+//    // 최빈값(last_on) 선택
+//    int best_last_on = 0;
+//    int best_count = counts[0];
+//    for (int i = 1; i <= 20; i++) {
+//        if (counts[i] > best_count) {
+//            best_count = counts[i];
+//            best_last_on = i;
+//        }
+//    }
+//
+//    if (best_last_on <= 0) {
+//        return 0.0f;   // 아무 것도 감지되지 않음 -> 0 g
+//    }
+//
+//    float mass = WS_IndexToMass((uint8_t)best_last_on);
+//    if (mass < 0.0f) {
+//        return 0.0f;
+//    }
+//
+//    /* ============================
+//     * Apply random ± percentage (once)
+//     * ============================ */
+//    float percent = 0.0f;
+//
+//    if (mass <= 100.0f) {
+//        percent = 0.10f;      // ±10%
+//    } else if (mass <= 1000.0f) {
+//        percent = 0.05f;      // ±5%
+//    } else {
+//        percent = 0.025f;     // ±2.5%
+//    }
+//
+//    float r = ((float)(rand() % 2001) - 1000.0f) / 1000.0f; // -1.0 ~ +1.0
+//    float randomized = mass + (mass * percent * r);
+//
+//    if (randomized < 0.0f)
+//        randomized = 0.0f;
+//
+//    return randomized;
+//}
+
+/* === Quick APIs (use active handle) === */
+
+float WATER_ReadHeightMM_Quick(uint8_t threshold)
+{
+    if (!g_active_hws) return -1;
+    return WATER_ReadHeightMM_Threshold(g_active_hws, threshold);
+}
+
+float WATER_ReadLastOn_Quick(uint8_t threshold)
+{
+    if (!g_active_hws) return -1; // no active handle -> error
+    return WATER_ReadLastOn_Threshold(g_active_hws, threshold);
+}
+
+// It is used to testing dummy data instead of real sensing data.
+float WATER_ReadLastOn_Quick_Dummy(uint8_t threshold) {
+	HAL_Delay(100);
+    return 10.0f;  // unit : g
+}
+
+// It is used to testing dummy data instead of real sensing data.
+float WATER_ReadHeightMM_Dummy(uint8_t threshold) {
+	HAL_Delay(100);
+	return 30.5f;
+}
+
+// It is used to testing dummy data instead of real sensing data.
+float WATER_ReadHeightMM_Quick_Dummy(uint8_t threshold) {
+	HAL_Delay(100);
+	return 15.0f;
+}
